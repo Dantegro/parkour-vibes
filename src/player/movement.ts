@@ -64,6 +64,35 @@ export function updatePlayerMovement(
 ): void {
   if (!isLocked) return;
 
+  // Apply jump velocity *early* (if we could jump at the start of this frame, i.e. we were on a
+  // surface from the previous frame's resolves). This makes the positive velocityY affect *this
+  // frame's* y update and the two resolveWalls + resolveFloors calls.
+  //
+  // Previously the jump set was at the very end (after y+= and both wall/floor resolves). On a
+  // "jump off crate while sprinting" frame this meant:
+  //   - horizontal sprint move off the edge
+  //   - resolveWalls1 (eye still at landed y → pFeet near box.top → blocksHorizontal false, good)
+  //   - vely -= gravity*dt (small negative dip)
+  //   - eye.y += (small drop) → pFeet now < box.top - margin
+  //   - resolveFloors
+  //   - resolveWalls2 (now at lower y, still some XZ overlap → blocksHorizontal true → sudden
+  //     penetration push in X or Z by the pen amount)
+  //   - then (after resolves) if(jump) { vely = +JUMP; ... }
+  //
+  // The late resolveWalls2 push (or the timing of when "on top" vs "side" blocking flips) produced
+  // the visible small "instance" X jitter in the eye (and thus the camera, in both FP and 3P).
+  // It was most noticeable sprinting + jumping off because large per-frame horizontal deltas +
+  // the exact moment the vertical state + overlap made blocking re-activate.
+  //
+  // By setting vely positive early we rise (or at least don't dip) on the jump-off frame, keep
+  // pFeet high enough for blocksHorizontal to stay false during both wall resolves, and avoid the
+  // spurious correction. The late jump check (after floors) is left in place so same-frame
+  // "land this frame + jump" still works (using the canJump that floors just set).
+  if (input.jump && state.canJump) {
+    state.velocityY = JUMP_VELOCITY;
+    state.canJump = false;
+  }
+
   const horizontalMove = { x: 0, z: 0 };
   const moveLen = Math.hypot(input.strafe, input.forward);
 
