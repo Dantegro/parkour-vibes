@@ -145,6 +145,8 @@ export function updatePlayerMovement(
     smoothedGroundY: state.smoothedGroundY,
     prevEyeX: state.prevEyeX,
     prevEyeZ: state.prevEyeZ,
+    wasOnSurface: state.onSurface,
+    isMoving: moveLen > 0,
   };
 
   const floor = resolveFloors(

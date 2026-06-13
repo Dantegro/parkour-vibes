@@ -70,6 +70,8 @@ describe("resolveFloors", () => {
         smoothedGroundY: 0,
         prevEyeX: 0,
         prevEyeZ: 0,
+        wasOnSurface: false,
+        isMoving: false,
       },
       world,
       raycaster,
@@ -99,6 +101,8 @@ describe("resolveFloors", () => {
         smoothedGroundY: 0,
         prevEyeX: 1.42,
         prevEyeZ: 0,
+        wasOnSurface: false,
+        isMoving: false,
       },
       world,
       raycaster,
@@ -145,6 +149,8 @@ describe("resolveFloors", () => {
         smoothedGroundY: startGround,
         prevEyeX: startX,
         prevEyeZ: z,
+        wasOnSurface: true,
+        isMoving: true,
       },
       world,
       raycaster,
@@ -164,6 +170,8 @@ describe("resolveFloors", () => {
         smoothedGroundY: first.smoothedGroundY,
         prevEyeX: startX,
         prevEyeZ: z,
+        wasOnSurface: true,
+        isMoving: true,
       },
       world,
       raycaster,
@@ -179,5 +187,64 @@ describe("resolveFloors", () => {
     expect(actualRise).toBeLessThan(rawRise);
     expect(second.smoothedGroundY).toBeGreaterThan(startGround);
     expect(second.smoothedGroundY).toBeLessThan(endGround);
+  });
+
+  it("snaps to ground when idle so post-landing height does not keep easing", async () => {
+    const { resolveFloors } = await import("./collision.js");
+    const groundGeo = new THREE.PlaneGeometry(10, 10, 2, 2);
+    groundGeo.rotateX(-Math.PI / 2);
+    const ground = new THREE.Mesh(groundGeo);
+    ground.updateMatrixWorld(true);
+
+    const world: CollisionWorld = { collidables: [], groundMesh: ground };
+    const raycaster = new THREE.Raycaster();
+    const rayOrigin = new THREE.Vector3();
+    const delta = 1 / 60;
+    const staleSmoothedY = 0.35;
+    const eyePos = new THREE.Vector3(0, staleSmoothedY + PLAYER_EYE_HEIGHT, 0);
+
+    const idle = resolveFloors(
+      eyePos,
+      {
+        velocityY: 0,
+        canJump: true,
+        prevFeetY: staleSmoothedY,
+        smoothedGroundY: staleSmoothedY,
+        prevEyeX: 0,
+        prevEyeZ: 0,
+        wasOnSurface: true,
+        isMoving: false,
+      },
+      world,
+      raycaster,
+      rayOrigin,
+      delta,
+    );
+
+    expect(idle.onSurface).toBe(true);
+    expect(eyePos.y).toBeCloseTo(PLAYER_EYE_HEIGHT, 4);
+    expect(idle.smoothedGroundY).toBeCloseTo(0, 4);
+
+    const yAfterSnap = eyePos.y;
+    const idleAgain = resolveFloors(
+      eyePos,
+      {
+        velocityY: 0,
+        canJump: true,
+        prevFeetY: idle.feetY,
+        smoothedGroundY: idle.smoothedGroundY,
+        prevEyeX: 0,
+        prevEyeZ: 0,
+        wasOnSurface: true,
+        isMoving: false,
+      },
+      world,
+      raycaster,
+      rayOrigin,
+      delta,
+    );
+
+    expect(idleAgain.onSurface).toBe(true);
+    expect(eyePos.y).toBeCloseTo(yAfterSnap, 4);
   });
 });

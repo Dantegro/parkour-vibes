@@ -11,6 +11,7 @@ import {
   TERRAIN_GROUND_SMOOTH_TAU_UP,
   TERRAIN_MAX_SINK,
   TERRAIN_STICK_FEET,
+  TERRAIN_STICK_LEAVE,
   WALL_FRICTION,
 } from "./constants.js";
 
@@ -32,6 +33,10 @@ export interface FloorContext {
   /** Previous-frame eye XZ for spatial ground sampling (damps mesh-edge pops). */
   prevEyeX: number;
   prevEyeZ: number;
+  /** Whether the player was on a walkable surface last frame. */
+  wasOnSurface: boolean;
+  /** True when the player moved horizontally this frame. */
+  isMoving: boolean;
 }
 
 export function sampleGroundHeight(
@@ -350,19 +355,26 @@ function applyTerrainFollow(
   feetOnBox: boolean,
   delta: number,
   smoothedGroundY: number,
+  wasOnSurface: boolean,
+  isMoving: boolean,
 ): FloorResolveResult {
   const pFeet = feetY(eyePos.y);
   const feetAboveGround = pFeet - groundHeight;
   const rising = !canJump && velocityY > 0.1;
+  const stickCeiling = wasOnSurface ? TERRAIN_STICK_LEAVE : TERRAIN_STICK_FEET;
 
   if (
     !feetOnBox &&
-    feetAboveGround <= TERRAIN_STICK_FEET &&
+    feetAboveGround <= stickCeiling &&
     feetAboveGround >= -0.15 &&
     velocityY <= 0 &&
     !rising
   ) {
-    const nextGroundY = smoothGroundHeight(smoothedGroundY, groundHeight, delta);
+    const justLanded = !wasOnSurface;
+    const nextGroundY =
+      justLanded || (!isMoving && wasOnSurface)
+        ? groundHeight
+        : smoothGroundHeight(smoothedGroundY, groundHeight, delta);
     eyePos.y = nextGroundY + PLAYER_EYE_HEIGHT;
     return {
       velocityY: 0,
@@ -460,6 +472,8 @@ export function resolveFloors(
       feetOnBoxAfter,
       delta,
       ctx.smoothedGroundY,
+      ctx.wasOnSurface,
+      ctx.isMoving,
     );
   }
 

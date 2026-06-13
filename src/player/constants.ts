@@ -37,8 +37,11 @@ export const LAND_SNAP_TOLERANCE = 0.4;
 export const BOX_TOP_EDGE_GRACE = 0.27;
 /** Vertical window around a box top for lip clearance and swept landing. */
 export const BOX_TOP_LAND_MARGIN = 0.13;
-/** Feet within this of terrain surface → follow ground height. */
+/** Feet within this of terrain surface → attach when approaching from air. */
 export const TERRAIN_STICK_FEET = 0.25;
+
+/** Looser ceiling while already grounded — prevents onSurface flicker when smoothed height lags after landing. */
+export const TERRAIN_STICK_LEAVE = 0.55;
 
 /** Low-pass time constants for smoothed ground height (feet Y), not eye Y directly.
  *  Uphill uses a faster tau so the camera does not sink into rises while sprinting;
