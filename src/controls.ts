@@ -10,7 +10,8 @@ export interface PlayerAPI {
 
 export function initPlayerControls(
   domElement: HTMLElement,
-  collidables: THREE.Mesh[] = []
+  collidables: THREE.Mesh[] = [],
+  groundMesh?: THREE.Mesh
 ): PlayerAPI {
   const camera = new THREE.PerspectiveCamera(
     75,
@@ -115,7 +116,24 @@ export function initPlayerControls(
   const PLAYER_RADIUS = 0.55;       // horizontal "thickness"
   const PLAYER_HEAD_OFFSET = 0.15;  // head is slightly above the camera (eye)
   const PLAYER_FEET_OFFSET = 2.85;  // camera (eye) is this far above the feet when standing
+  const PLAYER_EYE_HEIGHT = 3.0;    // desired camera y above the terrain surface when "on ground"
   const WALL_FRICTION = 0.82;       // < 1.0 slows you down while scraping/sliding along walls
+
+  // Raycaster for sampling the actual height of the uneven ground mesh
+  const raycaster = new THREE.Raycaster();
+  const _down = new THREE.Vector3(0, -1, 0);
+
+  function getGroundHeight(x: number, z: number): number {
+    if (!groundMesh) return 0;
+    // Shoot a ray straight down from high above the player's (x,z)
+    const origin = new THREE.Vector3(x, 150, z);
+    raycaster.set(origin, _down);
+    const intersects = raycaster.intersectObject(groundMesh, false);
+    if (intersects.length > 0) {
+      return intersects[0].point.y;
+    }
+    return 0;
+  }
 
   // --- Horizontal collision with proper sliding + friction ---
   // Player is a vertical cylinder. After movement we push out of walls.
@@ -127,12 +145,28 @@ export function initPlayerControls(
     const pos = camera.position;
     let hitWall = false;
 
+    const pHead = pos.y + PLAYER_HEAD_OFFSET;
+    const pFeet = pos.y - PLAYER_FEET_OFFSET;
+
     // Several iterations for stable corner / diagonal resolution
     for (let iter = 0; iter < 4; iter++) {
       let anyHit = false;
 
       for (const mesh of collidables) {
         const box = new THREE.Box3().setFromObject(mesh);
+
+        const boxMinY = box.min.y;
+        const boxMaxY = box.max.y;
+
+        // Only collide horizontally with this box if the player's capsule
+        // vertically overlaps the box's height range (i.e. the box is acting
+        // as a side wall at the player's current height).
+        // This is the key fix for being able to jump over short boxes:
+        // once your feet clear the top of a short box, horizontal side
+        // collision with it is disabled so your XZ can pass over it.
+        if (pHead <= boxMinY || pFeet >= boxMaxY) {
+          continue;
+        }
 
         const minX = box.min.x - PLAYER_RADIUS;
         const maxX = box.max.x + PLAYER_RADIUS;
@@ -189,18 +223,27 @@ export function initPlayerControls(
       const px = camera.position.x;
       const pz = camera.position.z;
 
-      // Player's horizontal center is "over" the object (no radius here for top/bottom surfaces)
-      if (px >= box.min.x && px <= box.max.x &&
-          pz >= box.min.z && pz <= box.max.z) {
+      // Use a small expansion for the *floor* check (landing on tops) so it's
+      // easier to land on short boxes after a jump (your center doesn't need to
+      // be perfectly inside the box).
+      const floorMargin = 0.5;
+      const overFloor = px >= box.min.x - floorMargin && px <= box.max.x + floorMargin &&
+                        pz >= box.min.z - floorMargin && pz <= box.max.z + floorMargin;
+
+      // For ceiling bonk, use stricter center check.
+      const centerOver = px >= box.min.x && px <= box.max.x &&
+                         pz >= box.min.z && pz <= box.max.z;
+
+      if (overFloor || centerOver) {
 
         // Head bonk (hitting the underside of an object while moving upward)
-        if (velocityY > 0 && headY > box.min.y) {
+        if (velocityY > 0 && headY > box.min.y && centerOver) {
           camera.position.y = box.min.y - PLAYER_HEAD_OFFSET;
           velocityY = 0; // stop upward momentum (head bonk)
         }
 
         // Feet / standing on top of an object while falling
-        if (velocityY <= 0 && feetY < box.max.y) {
+        if (velocityY <= 0 && feetY < box.max.y && overFloor) {
           camera.position.y = box.max.y + PLAYER_FEET_OFFSET;
           velocityY = 0;
           canJump = true;
@@ -244,8 +287,30 @@ export function initPlayerControls(
     // Vertical capsule: ceiling bonks + standing on top of low objects (buildings / red cube)
     resolveVerticalCollisions();
 
-    // World ground floor (fallback for the main terrain at y=0)
-    if (camera.position.y < PLAYER_HEIGHT) {
+    // React to the actual uneven ground height (raycast sample).
+    // This makes the camera follow hills and valleys instead of staying at fixed y=3.
+    // We only "stick" to ground when close to it or falling (respects jumps).
+    // Using lerp gives smooth vertical motion as you traverse slopes.
+    if (groundMesh) {
+      const gHeight = getGroundHeight(camera.position.x, camera.position.z);
+      const targetY = gHeight + PLAYER_EYE_HEIGHT;
+
+      const currentY = camera.position.y;
+      const distAboveGround = currentY - gHeight;
+
+      // If we are at or below the "standing" height on the terrain, or falling towards it,
+      // follow the ground (with smoothing for natural feel on uneven terrain).
+      if (distAboveGround < PLAYER_EYE_HEIGHT + 0.15 && (canJump || velocityY <= 0)) {
+        // Lerp for smoothness instead of hard snap every frame.
+        // Higher lerp factor = snappier response to slopes.
+        // Lower = smoother / floatier but can lag on steep changes.
+        camera.position.y = THREE.MathUtils.lerp(currentY, targetY, 0.35);
+
+        if (velocityY < 0) velocityY = 0;
+        canJump = true;
+      }
+    } else if (camera.position.y < PLAYER_HEIGHT) {
+      // Fallback for when no ground mesh is provided
       camera.position.y = PLAYER_HEIGHT;
       velocityY = 0;
       canJump = true;

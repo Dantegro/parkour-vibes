@@ -60,18 +60,19 @@ export function createWorld() {
   }
 
   // Shorter boxes / low platforms that the player *can* jump onto.
-  // These are easier to reach (top around ~2.8) and help make the environment
-  // more interesting and climbable without changing the main jump height.
+  // Lower top (~2.45) so that during a normal jump the player's feet can
+  // clear the top (pFeet > box top), disabling horizontal side collision
+  // long enough for your XZ to move over the platform and land on it.
   for (let i = 0; i < 10; i++) {
     const b = new THREE.Mesh(
-      new THREE.BoxGeometry(3.2, 2.6, 3.2),
+      new THREE.BoxGeometry(3.2, 2.3, 3.2),
       new THREE.MeshLambertMaterial({ color: 0x8B7355 }), // more earthy/crate-like
     );
     const angle = Math.random() * Math.PI * 2;
     const r = 12 + Math.random() * 48; // spread out, slightly different range
     b.position.set(
       Math.cos(angle) * r * (0.7 + Math.random() * 0.85),
-      1.3,
+      1.15,
       Math.sin(angle) * r
     );
     if (Math.random() < 0.4) {
@@ -82,5 +83,5 @@ export function createWorld() {
     collidables.push(b);
   }
 
-  return { scene, cube, collidables };
+  return { scene, cube, collidables, ground };
 }

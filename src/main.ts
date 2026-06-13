@@ -2,36 +2,6 @@ import * as THREE from "three";
 import { createWorld } from "./scene.js";
 import { initPlayerControls } from "./controls.js";
 
-// #region agent log
-function agentLog(
-  location: string,
-  message: string,
-  data: Record<string, unknown>,
-  hypothesisId: string,
-) {
-  const entry = {
-    sessionId: "94dacd",
-    location,
-    message,
-    data,
-    timestamp: Date.now(),
-    hypothesisId,
-  };
-  const key = "debug-94dacd";
-  const prev = JSON.parse(localStorage.getItem(key) ?? "[]") as unknown[];
-  prev.push(entry);
-  localStorage.setItem(key, JSON.stringify(prev.slice(-50)));
-  fetch("http://127.0.0.1:7339/ingest/c28d5406-c153-4730-ac73-09623cb09216", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Debug-Session-Id": "94dacd",
-    },
-    body: JSON.stringify(entry),
-  }).catch(() => {});
-}
-// #endregion
-
 const canvas = document.querySelector("#game") as HTMLCanvasElement;
 
 document.body.style.margin = "0";
@@ -52,11 +22,12 @@ c.style.height = "100%";
 c.style.zIndex = "1";
 c.style.display = "block";
 
-const { scene, cube, collidables } = createWorld();
+const { scene, cube, collidables, ground } = createWorld();
 
 const { camera, updateMovement, dispose: disposeControls } = initPlayerControls(
   renderer.domElement,
-  collidables
+  collidables,
+  ground
 );
 
 let prevTime = performance.now();
