@@ -1,9 +1,21 @@
 import { applyA11y, ensureSrOnlyStyles } from "./a11y.js";
 
+export const GAME_MODES = [
+  { id: "open-world", label: "Open World" },
+  { id: "hunted", label: "Hunted" },
+] as const;
+
+export type GameModeId = (typeof GAME_MODES)[number]["id"];
+
+export interface GameModeOption {
+  id: GameModeId;
+  button: HTMLButtonElement;
+  statusEl: HTMLSpanElement;
+}
+
 export interface MainMenuElements {
   root: HTMLDivElement;
-  gameModeOption: HTMLButtonElement;
-  gameModeStatus: HTMLSpanElement;
+  gameModeOptions: GameModeOption[];
   startButton: HTMLButtonElement;
   gamesLabel: HTMLDivElement;
   volumeSlider: HTMLInputElement;
@@ -71,6 +83,12 @@ export function injectMainMenuStyles(): MainMenuStyleHandle {
     font-weight: 500;
     color: #888894;
     margin-bottom: 10px;
+  }
+  .menu-mode-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
   }
   .menu-entry {
     width: 336px;
@@ -210,13 +228,14 @@ export function injectMainMenuStyles(): MainMenuStyleHandle {
  * Selectable game mode row. Mapped as button in accessibility-devtools.config.yml.
  */
 export function buildGameModeOption(
+  modeId: GameModeId,
   modeName: string,
   statusText: string,
-): { button: HTMLButtonElement; statusEl: HTMLSpanElement } {
+): GameModeOption {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "menu-entry";
-  button.id = "game-mode-open-world";
+  button.id = `game-mode-${modeId}`;
 
   applyA11y(button, {
     role: "radio",
@@ -234,7 +253,7 @@ export function buildGameModeOption(
   statusEl.setAttribute("aria-hidden", "true");
 
   button.append(nameEl, statusEl);
-  return { button, statusEl };
+  return { id: modeId, button, statusEl };
 }
 
 /**
@@ -339,16 +358,18 @@ export function buildMainMenu(): MainMenuElements {
   gamesLabel.textContent = "Game mode";
 
   const modeGroup = document.createElement("div");
+  modeGroup.className = "menu-mode-group";
   applyA11y(modeGroup, {
     role: "radiogroup",
     "aria-labelledby": "game-modes-label",
   });
 
-  const { button: gameModeOption, statusEl: gameModeStatus } = buildGameModeOption(
-    "Open World",
-    "",
+  const gameModeOptions = GAME_MODES.map((mode) =>
+    buildGameModeOption(mode.id, mode.label, ""),
   );
-  modeGroup.appendChild(gameModeOption);
+  for (const option of gameModeOptions) {
+    modeGroup.appendChild(option.button);
+  }
 
   const previewSection = document.createElement("div");
   previewSection.className = "menu-preview-section";
@@ -394,8 +415,7 @@ export function buildMainMenu(): MainMenuElements {
 
   return {
     root,
-    gameModeOption,
-    gameModeStatus,
+    gameModeOptions,
     startButton,
     gamesLabel,
     volumeSlider,

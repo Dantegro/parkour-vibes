@@ -14,6 +14,7 @@ import {
 import {
   buildMainMenu,
   injectMainMenuStyles,
+  type GameModeId,
   setGameModeSelected,
   setMapPreviewVisible,
   setStartButtonEnabled,
@@ -53,7 +54,7 @@ let disposeControls: (() => void) | undefined;
 
 let gameStarted = false;
 
-let selectedGameMode: string | null = null;
+let selectedGameMode: GameModeId | null = null;
 
 let previewRenderer: THREE.WebGLRenderer | undefined;
 let currentWorld: ReturnType<typeof createWorld> | undefined;
@@ -76,7 +77,7 @@ previewRenderer.setSize(PREVIEW_SIZE, PREVIEW_SIZE);
 
 function startGame() {
   if (!selectedGameMode) {
-    mainMenu.gameModeOption.focus();
+    mainMenu.gameModeOptions[0]?.button.focus();
     return;
   }
 
@@ -293,19 +294,26 @@ mainMenu.volumeSlider.addEventListener("input", () => {
   mainMenu.updateVolumeDisplay(vol);
 });
 
-mainMenu.gameModeOption.addEventListener("click", () => {
-  selectedGameMode = "open-world";
-  setGameModeSelected(mainMenu.gameModeOption, mainMenu.gameModeStatus, true);
+function selectGameMode(modeId: GameModeId): void {
+  selectedGameMode = modeId;
+  for (const option of mainMenu.gameModeOptions) {
+    setGameModeSelected(option.button, option.statusEl, option.id === modeId);
+  }
   setStartButtonEnabled(mainMenu.startButton, true);
   playBackgroundMusic();
 
-  // Only reveal the top-down map preview (and generate the layout) once the user selects the game mode.
   mainMenu.mapPreviewContainer.style.display = "flex";
   setMapPreviewVisible(mainMenu.root, true);
   if (!currentWorld) {
     generatePreview();
   }
-});
+}
+
+for (const option of mainMenu.gameModeOptions) {
+  option.button.addEventListener("click", () => {
+    selectGameMode(option.id);
+  });
+}
 
 mainMenu.startButton.addEventListener("click", startGame);
 

@@ -9,7 +9,7 @@ import {
 
 describe("setGameModeSelected", () => {
   it("updates selection state and ARIA", () => {
-    const { button, statusEl } = buildGameModeOption("Open World", "");
+    const { button, statusEl } = buildGameModeOption("open-world", "Open World", "");
 
     setGameModeSelected(button, statusEl, true);
     expect(button.classList.contains("selected")).toBe(true);
@@ -41,6 +41,14 @@ describe("setStartButtonEnabled", () => {
 });
 
 describe("buildMainMenu", () => {
+  it("renders both game mode options", () => {
+    const menu = buildMainMenu();
+
+    expect(menu.gameModeOptions).toHaveLength(2);
+    expect(menu.root.querySelector("#game-mode-open-world")?.textContent).toContain("Open World");
+    expect(menu.root.querySelector("#game-mode-hunted")?.textContent).toContain("Hunted");
+  });
+
   it("renders accessible menu shell with logo and title", () => {
     const menu = buildMainMenu();
 
