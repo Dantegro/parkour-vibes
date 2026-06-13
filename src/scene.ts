@@ -61,58 +61,86 @@ export function createWorld() {
     return hits.length > 0 ? hits[0].point.y : 0;
   }
 
+  function randomInRange(min: number, max: number): number {
+    return min + Math.random() * (max - min);
+  }
+
+  function wouldOverlap(candidate: THREE.Mesh): boolean {
+    const cBox = new THREE.Box3().setFromObject(candidate);
+    const margin = 0.25;
+    for (const ex of collidables) {
+      const eBox = new THREE.Box3().setFromObject(ex);
+      eBox.min.addScalar(-margin);
+      eBox.max.addScalar(margin);
+      if (eBox.intersectsBox(cBox)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   const cube = new THREE.Mesh(
-    new THREE.BoxGeometry(6, 6, 6),
+    new THREE.BoxGeometry(9, 9, 9),
     new THREE.MeshLambertMaterial({ color: 0xff2222 }),
   );
   const ghRed = getGroundHeightAt(3, -12);
-  cube.position.set(3, ghRed + 3 + 0.1, -12); // bottom just above local ground
+  cube.position.set(3, ghRed + 4.5 + 0.1, -12); // bottom just above local ground
   scene.add(cube);
   collidables.push(cube);
 
-  // Tall buildings (main obstacles). Made taller/higher so they are out of reach
-  // even with a normal jump (and even on most hills). They are more spread out.
-  // Now positioned on the local ground height.
+  // Tall buildings (main obstacles). Varied size; tops sit above normal jump reach.
   for (let i = 0; i < 18; i++) {
-    const b = new THREE.Mesh(
-      new THREE.BoxGeometry(3.8, 5.5, 3.8),
-      new THREE.MeshLambertMaterial({ color: 0x777799 }),
-    );
-    const angle = Math.random() * Math.PI * 2;
-    const r = 10 + Math.random() * 50; // larger spread
-    const bx = Math.cos(angle) * r * (0.75 + Math.random() * 0.9);
-    const bz = Math.sin(angle) * r;
-    const gh = getGroundHeightAt(bx, bz);
-    b.position.set(bx, gh + 2.75 + 0.1, bz); // center = ground + half height + small base
-    if (Math.random() < 0.35) {
-      b.material.color.setHex(0xaaaa66 + ((Math.random() * 0x555555) | 0));
+    for (let attempt = 0; attempt < 25; attempt++) {
+      const width = randomInRange(2.8, 5.2);
+      const depth = randomInRange(2.8, 5.2);
+      const height = randomInRange(4.6, 6.4);
+      const b = new THREE.Mesh(
+        new THREE.BoxGeometry(width, height, depth),
+        new THREE.MeshLambertMaterial({ color: 0x777799 }),
+      );
+      const angle = Math.random() * Math.PI * 2;
+      const r = 10 + Math.random() * 50;
+      const bx = Math.cos(angle) * r * (0.75 + Math.random() * 0.9);
+      const bz = Math.sin(angle) * r;
+      const gh = getGroundHeightAt(bx, bz);
+      b.position.set(bx, gh + height / 2 + 0.1, bz);
+      if (Math.random() < 0.35) {
+        b.material.color.setHex(0xaaaa66 + ((Math.random() * 0x555555) | 0));
+      }
+      if (!wouldOverlap(b)) {
+        scene.add(b);
+        collidables.push(b);
+        break;
+      }
     }
-    scene.add(b);
-    collidables.push(b);
   }
 
-  // Shorter boxes / low platforms that the player *can* jump onto.
-  // Lower top (~2.45) so that during a normal jump the player's feet can
-  // clear the top (pFeet > box top), disabling horizontal side collision
-  // long enough for your XZ to move over the platform and land on it.
-  // Now positioned on the local ground height.
+  // Shorter boxes / low platforms the player can jump onto — varied footprint and height.
   for (let i = 0; i < 10; i++) {
-    const b = new THREE.Mesh(
-      new THREE.BoxGeometry(3.2, 2.3, 3.2),
-      new THREE.MeshLambertMaterial({ color: 0x8B7355 }), // more earthy/crate-like
-    );
-    const angle = Math.random() * Math.PI * 2;
-    const r = 12 + Math.random() * 48; // spread out, slightly different range
-    const bx = Math.cos(angle) * r * (0.7 + Math.random() * 0.85);
-    const bz = Math.sin(angle) * r;
-    const gh = getGroundHeightAt(bx, bz);
-    b.position.set(bx, gh + 1.15 + 0.1, bz); // center = ground + half height + small base
-    if (Math.random() < 0.4) {
-      // slight variation toward woodier tones
-      b.material.color.setHex(0xA0522D + ((Math.random() * 0x333333) | 0));
+    for (let attempt = 0; attempt < 25; attempt++) {
+      const width = randomInRange(2.0, 4.4);
+      const depth = randomInRange(2.0, 4.4);
+      const height = randomInRange(1.5, 2.85);
+      const b = new THREE.Mesh(
+        new THREE.BoxGeometry(width, height, depth),
+        new THREE.MeshLambertMaterial({ color: 0x8B7355 }),
+      );
+      const angle = Math.random() * Math.PI * 2;
+      const r = 12 + Math.random() * 48;
+      const bx = Math.cos(angle) * r * (0.7 + Math.random() * 0.85);
+      const bz = Math.sin(angle) * r;
+      const gh = getGroundHeightAt(bx, bz);
+      b.position.set(bx, gh + height / 2 + 0.1, bz);
+      if (Math.random() < 0.4) {
+        // slight variation toward woodier tones
+        b.material.color.setHex(0xA0522D + ((Math.random() * 0x333333) | 0));
+      }
+      if (!wouldOverlap(b)) {
+        scene.add(b);
+        collidables.push(b);
+        break;
+      }
     }
-    scene.add(b);
-    collidables.push(b);
   }
 
   return { scene, cube, collidables, ground };
