@@ -25,12 +25,22 @@ export function initPlayerControls(domElement: HTMLElement): PlayerAPI {
   instructions.style.cssText =
     "position:fixed;inset:0;display:grid;place-items:center;color:#ccc;font-family:sans-serif;text-align:center;z-index:10;background:linear-gradient(rgba(0,0,0,0.12),rgba(0,0,0,0.2));user-select:none;cursor:pointer;";
   instructions.innerHTML =
-    "Click to start<br><small>WASD to move • Space to jump • Mouse to look</small>";
+    "Click to start<br><small>WASD to move • Space to jump • Mouse to look</small><br><small>(enters fullscreen for immersion)</small>";
   document.body.appendChild(instructions);
 
-  instructions.addEventListener("click", (event) => {
+  instructions.addEventListener("click", async (event) => {
     event.preventDefault();
     event.stopPropagation();
+
+    // Request fullscreen for better immersion.
+    // Fullscreen + pointer lock suppresses many browser keyboard shortcuts
+    // (e.g. Ctrl+W, Ctrl+T, Cmd+W, etc.) that would otherwise close tabs or trigger UI.
+    try {
+      await document.documentElement.requestFullscreen();
+    } catch {
+      // Fullscreen request denied or unsupported — still attempt pointer lock.
+    }
+
     controls.lock();
   });
 
@@ -48,8 +58,43 @@ export function initPlayerControls(domElement: HTMLElement): PlayerAPI {
   });
 
   const keys: Record<string, boolean> = {};
-  window.addEventListener("keydown", (e) => (keys[e.code] = true));
-  window.addEventListener("keyup", (e) => (keys[e.code] = false));
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    keys[e.code] = true;
+
+    if (controls.isLocked) {
+      // Prevent browser default behavior for keys while in game.
+      // This blocks many shortcuts like Ctrl+W (close tab), Ctrl+T (new tab),
+      // Ctrl+R (reload), Cmd+W, Alt+key combos, etc.
+      e.preventDefault();
+      e.stopImmediatePropagation();
+
+      // Extra aggressive blocking for any modified key (Ctrl, Cmd, Alt)
+      if (e.ctrlKey || e.metaKey || e.altKey) {
+        e.stopImmediatePropagation();
+      }
+    }
+  };
+
+  const handleKeyUp = (e: KeyboardEvent) => {
+    keys[e.code] = false;
+
+    if (controls.isLocked) {
+      e.preventDefault();
+    }
+  };
+
+  window.addEventListener("keydown", handleKeyDown);
+  window.addEventListener("keyup", handleKeyUp);
+
+  // Also prevent the browser context menu (right-click) while in the game
+  // for better immersion / to avoid accidental UI popups.
+  const handleContextMenu = (e: MouseEvent) => {
+    if (controls.isLocked) {
+      e.preventDefault();
+    }
+  };
+  domElement.addEventListener("contextmenu", handleContextMenu);
 
   const velocity = new THREE.Vector3();
   const direction = new THREE.Vector3();
@@ -105,8 +150,11 @@ export function initPlayerControls(domElement: HTMLElement): PlayerAPI {
   function dispose() {
     instructions.remove();
     controls.disconnect();
-    // Note: global key listeners are not removed here (would require
-    // storing handler references + removeEventListener for perfect cleanup).
+
+    // Clean up listeners (important for HMR / hot reloads)
+    window.removeEventListener("keydown", handleKeyDown);
+    window.removeEventListener("keyup", handleKeyUp);
+    domElement.removeEventListener("contextmenu", handleContextMenu);
   }
 
   return {
