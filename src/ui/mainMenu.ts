@@ -25,8 +25,8 @@ export function injectMainMenuStyles(): MainMenuStyleHandle {
   .menu-entry {
     width: 320px;
     padding: 14px 18px;
-    border: 1px solid #3a3a44;
-    background: #16161c;
+    border: 1px solid #3d4460;
+    background: #181a28;
     color: #c0c0c8;
     font-size: 15px;
     display: flex;
@@ -60,8 +60,8 @@ export function injectMainMenuStyles(): MainMenuStyleHandle {
     100% { transform: scale(1); }
   }
   .menu-entry:hover {
-    background: #1f1f28;
-    border-color: #5a5a66;
+    background: #222436;
+    border-color: #525a72;
   }
   .menu-entry.selected {
     border-color: #4a6a4a;
@@ -132,6 +132,29 @@ export function injectMainMenuStyles(): MainMenuStyleHandle {
   #map-regen-btn:hover {
     background: #24242e;
     color: #ccc;
+  }
+  #main-menu {
+    background:
+      radial-gradient(ellipse 70% 50% at 50% 18%, rgba(71, 191, 255, 0.14) 0%, transparent 55%),
+      radial-gradient(ellipse 55% 45% at 80% 85%, rgba(134, 59, 255, 0.1) 0%, transparent 50%),
+      linear-gradient(168deg, #1e2648 0%, #161d38 42%, #12182e 100%);
+  }
+  .menu-logo {
+    width: 72px;
+    height: auto;
+    margin: 0 0 14px;
+    display: block;
+    animation: menuLogoFloat 4.2s ease-in-out infinite;
+    filter: drop-shadow(0 6px 20px rgba(134, 59, 255, 0.4));
+  }
+  @keyframes menuLogoFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .menu-logo {
+      animation: none;
+    }
   }
 `;
   document.head.appendChild(element);
@@ -244,7 +267,7 @@ export function buildMainMenu(): MainMenuElements {
   const root = document.createElement("div");
   root.id = "main-menu";
   root.style.cssText =
-    "position:fixed;inset:0;z-index:100;background:#0a0a10;color:#c8c8d0;font-family:system-ui,-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;";
+    "position:fixed;inset:0;z-index:100;color:#c8c8d0;font-family:system-ui,-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;";
 
   applyA11y(root, {
     role: "dialog",
@@ -253,10 +276,18 @@ export function buildMainMenu(): MainMenuElements {
     "aria-describedby": "menu-hint",
   });
 
+  const logo = document.createElement("img");
+  logo.className = "menu-logo";
+  logo.src = "/favicon.svg";
+  logo.width = 72;
+  logo.height = 69;
+  logo.alt = "";
+  logo.setAttribute("aria-hidden", "true");
+
   const title = document.createElement("h1");
   title.id = "menu-title";
   title.style.cssText =
-    "font-size:48px;letter-spacing:5px;margin:0 0 2px;font-weight:normal;color:#d8d8e2;";
+    "font-size:48px;letter-spacing:5px;margin:0 0 2px;font-weight:normal;color:#e4e6f4;";
   title.textContent = "VIBE PARKOUR";
 
   const tagline = document.createElement("p");
@@ -319,7 +350,7 @@ export function buildMainMenu(): MainMenuElements {
   hint.textContent =
     "Select a game mode, then press START GAME or Enter to begin. M toggles music. WASD and mouse after lock. Regenerate if the preview layout looks bad.";
 
-  root.append(title, tagline, gamesLabel, modeGroup, previewSection, startButton, volumeContainer, hint);
+  root.append(logo, title, tagline, gamesLabel, modeGroup, previewSection, startButton, volumeContainer, hint);
 
   function updateVolumeDisplay(volume: number): void {
     volumeSlider.value = volume.toString();
