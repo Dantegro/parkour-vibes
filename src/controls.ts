@@ -122,12 +122,13 @@ export function initPlayerControls(
   // Raycaster for sampling the actual height of the uneven ground mesh
   const raycaster = new THREE.Raycaster();
   const _down = new THREE.Vector3(0, -1, 0);
+  const _rayOrigin = new THREE.Vector3();
 
   function getGroundHeight(x: number, z: number): number {
     if (!groundMesh) return 0;
     // Shoot a ray straight down from high above the player's (x,z)
-    const origin = new THREE.Vector3(x, 150, z);
-    raycaster.set(origin, _down);
+    _rayOrigin.set(x, 150, z);
+    raycaster.set(_rayOrigin, _down);
     const intersects = raycaster.intersectObject(groundMesh, false);
     if (intersects.length > 0) {
       return intersects[0].point.y;
