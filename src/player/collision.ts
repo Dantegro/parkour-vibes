@@ -8,6 +8,7 @@ import {
   PLAYER_HEAD_OFFSET,
   PLAYER_RADIUS,
   TERRAIN_STICK_FEET,
+  TERRAIN_STICK_TAU,
   WALL_FRICTION,
 } from "./constants.js";
 
@@ -228,10 +229,20 @@ function evaluateBoxLanding(
 
   // Mid-air only — collidable tops never auto-step from grounded walk (prevents
   // slope exploits where feet are already near box.max.y on elevated terrain).
+  //
+  // IMPORTANT: We only allow landing/snapping onto a box top from below without
+  // a "crossed this frame" if stepDown >= 0 (i.e. your trajectory actually brought
+  // your feet to or above the top plane this frame). The old allowance for
+  // stepDown slightly negative without crossed could pull the player *up* onto
+  // a crate top even when the jump arc was not high enough to reach it
+  // (especially combined with horizontal movement into the grace area in the
+  // same frame while falling past the height). This was causing the "teleport
+  // over the crate" and subsequent "back to ground" pops when the resting check
+  // failed on later frames, plus landing jitter.
   if (!onTerrain && falling) {
     if (
       crossedTopPlane ||
-      (stepDown > -BOX_TOP_LAND_MARGIN && stepDown <= LAND_SNAP_TOLERANCE)
+      (stepDown >= 0 && stepDown <= LAND_SNAP_TOLERANCE)
     ) {
       return { topY: box.max.y, priority: box.max.y };
     }
@@ -288,6 +299,7 @@ function applyTerrainFollow(
   canJump: boolean,
   groundHeight: number,
   feetOnBox: boolean,
+  delta: number = 0,
 ): FloorResolveResult {
   const pFeet = feetY(eyePos.y);
   const feetAboveGround = pFeet - groundHeight;
@@ -301,7 +313,12 @@ function applyTerrainFollow(
     !rising
   ) {
     const targetY = groundHeight + PLAYER_EYE_HEIGHT;
-    eyePos.y = THREE.MathUtils.lerp(eyePos.y, targetY, 0.25);
+    // Use delta-based exponential lerp for consistent smooth follow (no more fixed 0.25
+    // per frame which could feel jittery or variable with fps/speed changes on landing).
+    const stickAlpha = delta > 0
+      ? (1 - Math.exp(-delta / TERRAIN_STICK_TAU))
+      : 0.25;
+    eyePos.y = THREE.MathUtils.lerp(eyePos.y, targetY, stickAlpha);
     return {
       velocityY: 0,
       canJump: true,
@@ -341,6 +358,7 @@ export function resolveFloors(
   world: CollisionWorld,
   raycaster: THREE.Raycaster,
   rayOrigin: THREE.Vector3,
+  delta: number = 0,
 ): FloorResolveResult {
   const groundHeight = world.groundMesh
     ? sampleGroundHeight(world.groundMesh, eyePos.x, eyePos.z, raycaster, rayOrigin)
@@ -380,6 +398,7 @@ export function resolveFloors(
       boxResult.canJump,
       groundHeight,
       feetOnBoxAfter,
+      delta,
     );
   }
 

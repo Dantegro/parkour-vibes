@@ -40,6 +40,10 @@ export const BOX_TOP_LAND_MARGIN = 0.13;
 /** Feet within this of terrain surface → follow ground height. */
 export const TERRAIN_STICK_FEET = 0.25;
 
+/** Time constant for smooth (delta-based) terrain following instead of the old fixed 0.25 per-frame lerp.
+ *  Makes landing and ground stick feel consistent and less jittery across frame rates and speeds. */
+export const TERRAIN_STICK_TAU = 0.12;
+
 /**
  * Third-person view (hold C) tuning and transition.
  * Camera position pulls back behind the player (offset based on current look yaw).

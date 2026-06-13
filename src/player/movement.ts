@@ -105,6 +105,7 @@ export function updatePlayerMovement(
     world,
     raycaster,
     rayOrigin,
+    delta,
   );
   state.velocityY = floor.velocityY;
   state.canJump = floor.canJump;
