@@ -1,0 +1,31 @@
+# BrowserStack Accessibility DevTools — custom component mappings.
+# Maps our vanilla TS UI factories to semantic HTML for lint coverage.
+version: 1
+components:
+  typescript:
+    buildMainMenu:
+      element: dialog
+      attributes:
+        ariaLabelledBy: aria-labelledby
+        ariaDescribedBy: aria-describedby
+        ariaModal: aria-modal
+    buildGameModeOption:
+      element: button
+      attributes:
+        label: "<text>"
+        aria-: "aria-"
+    buildGameStartButton:
+      element: button
+      attributes:
+        label: "<text>"
+        aria-: "aria-"
+    buildMusicVolumeControl:
+      element: input
+      attributes:
+        ariaLabel: aria-label
+        ariaValueText: aria-valuetext
+    buildGameStartOverlay:
+      element: button
+      attributes:
+        label: "<text>"
+        aria-: "aria-"
