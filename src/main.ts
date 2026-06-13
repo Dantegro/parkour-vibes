@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { createWorld } from "./scene.js";
+import type { CloudGroup } from "./world/clouds.js";
+import { disposeCloudGeometry, getCloudPuffGeometry } from "./world/clouds.js";
 import { initPlayerControls } from "./controls.js";
 import {
   initBackgroundMusic,
@@ -12,7 +14,9 @@ import {
 import {
   buildMainMenu,
   injectMainMenuStyles,
+  type GameModeId,
   setGameModeSelected,
+  setMapPreviewVisible,
   setStartButtonEnabled,
 } from "./ui/mainMenu.js";
 
@@ -40,7 +44,7 @@ c.style.display = "none";
 
 let prevTime = 0;
 
-const PREVIEW_SIZE = 240;
+const PREVIEW_SIZE = 288;
 
 let scene: THREE.Scene | undefined;
 let cube: THREE.Mesh | undefined;
@@ -50,10 +54,15 @@ let disposeControls: (() => void) | undefined;
 
 let gameStarted = false;
 
-let selectedGameMode: string | null = null;
+let selectedGameMode: GameModeId | null = null;
 
 let previewRenderer: THREE.WebGLRenderer | undefined;
 let currentWorld: ReturnType<typeof createWorld> | undefined;
+
+let staminaBar: ReturnType<typeof import("./ui/staminaBar.js").createStaminaBar> | undefined;
+let getStamina: (() => number) | undefined = undefined;
+
+let gameClouds: CloudGroup[] = [];
 
 const menuStyles = injectMainMenuStyles();
 const menuStyle = menuStyles.element;
@@ -68,19 +77,7 @@ previewRenderer.setSize(PREVIEW_SIZE, PREVIEW_SIZE);
 
 function startGame() {
   if (!selectedGameMode) {
-    // Visually prompt the user to select a game mode first
-    if (mainMenu.gameModeOption) {
-      mainMenu.gameModeOption.classList.add('selecting');
-      setTimeout(() => mainMenu.gameModeOption.classList.remove('selecting'), 380);
-    }
-    const gamesLabel = mainMenu.gamesLabel;
-    if (gamesLabel) {
-      const originalColor = gamesLabel.style.color;
-      gamesLabel.style.color = '#cc9966';
-      setTimeout(() => {
-        gamesLabel.style.color = originalColor || '';
-      }, 650);
-    }
+    mainMenu.gameModeOptions[0]?.button.focus();
     return;
   }
 
@@ -105,6 +102,7 @@ function startGame() {
 
   scene = worldToUse.scene;
   cube = worldToUse.cube;
+  gameClouds = worldToUse.clouds;
 
   const playerAPI = initPlayerControls(
     renderer.domElement,
@@ -115,12 +113,21 @@ function startGame() {
   camera = playerAPI.camera;
   updateMovement = playerAPI.updateMovement;
   disposeControls = playerAPI.dispose;
+  getStamina = playerAPI.getStamina || undefined;
 
   // Reveal the 3D canvas and kick off the game loop
   c.style.display = "block";
   c.removeAttribute("aria-hidden");
   prevTime = performance.now();
   animate();
+
+  // Create and show the stamina bar for the sprinting system.
+  // It is driven every frame from the same updateMovement call that the player feels.
+  import("./ui/staminaBar.js").then(({ createStaminaBar }) => {
+    staminaBar = createStaminaBar();
+    document.body.appendChild(staminaBar.element);
+    staminaBar.show();
+  });
 
   // Immediately enter the game on first start from the menu (auto lock + fullscreen).
   // The pause/resume overlay is kept hidden initially so the player drops straight into gameplay.
@@ -170,6 +177,13 @@ function exitToMenu() {
       previewRenderer.setSize(PREVIEW_SIZE, PREVIEW_SIZE);
     }
   }
+
+  if (staminaBar) {
+    staminaBar.remove();
+    staminaBar = undefined;
+  }
+  getStamina = undefined;
+  gameClouds = [];
 }
 
 function animate() {
@@ -183,6 +197,24 @@ function animate() {
 
   updateMovement(delta);
 
+  // Drive stamina UI (if present) from the same movement state the player is using.
+  if (staminaBar && getStamina) {
+    staminaBar.update(getStamina(), 100); // 100 = STAMINA_MAX (see player/constants.ts)
+  }
+
+  // Slowly drift clouds across the sky (parallax with different speeds)
+  for (const cloud of gameClouds) {
+    const speed = cloud.userData.speed;
+    cloud.position.x += speed * delta;
+
+    // Seamless wrap so the sky never runs out of clouds
+    if (cloud.position.x > 250) {
+      cloud.position.x = -250 - Math.random() * 30;
+      cloud.position.z = (Math.random() - 0.5) * 400;
+      cloud.position.y = 82 + Math.random() * 55;
+    }
+  }
+
   // Keep the red cube spinning so we can see rendering is alive
   cube.rotation.y += 0.01;
 
@@ -190,9 +222,12 @@ function animate() {
 }
 
 function disposeWorld(world: ReturnType<typeof createWorld>) {
+  const sharedCloudGeo = getCloudPuffGeometry();
   world.scene.traverse((child) => {
     if (!(child instanceof THREE.Mesh)) return;
-    child.geometry.dispose();
+    if (child.geometry !== sharedCloudGeo) {
+      child.geometry.dispose();
+    }
     const mat = child.material;
     if (Array.isArray(mat)) {
       for (const m of mat) m.dispose();
@@ -200,6 +235,7 @@ function disposeWorld(world: ReturnType<typeof createWorld>) {
       mat.dispose();
     }
   });
+  disposeCloudGeometry();
 }
 
 function generatePreview(regenerate = false) {
@@ -230,7 +266,17 @@ function generatePreview(regenerate = false) {
   cam.position.set(center.x, 90, center.z);
   cam.lookAt(center.x, 0, center.z);
 
+  // Temporarily hide clouds for the map preview only (so the top-down view cleanly shows
+  // the box/terrain layout the player is evaluating). Restore immediately so the world
+  // object (and its clouds) can still be reused for actual gameplay if the user starts.
+  const clouds = currentWorld.clouds;
+  for (const cloud of clouds) {
+    cloud.visible = false;
+  }
   previewRenderer!.render(currentWorld.scene, cam);
+  for (const cloud of clouds) {
+    cloud.visible = true;
+  }
 }
 
 // Wire regenerate (player can re-roll until the box layout looks good)
@@ -248,21 +294,26 @@ mainMenu.volumeSlider.addEventListener("input", () => {
   mainMenu.updateVolumeDisplay(vol);
 });
 
-mainMenu.gameModeOption.addEventListener("click", () => {
-  selectedGameMode = "open-world";
-  setGameModeSelected(mainMenu.gameModeOption, mainMenu.gameModeStatus, true);
+function selectGameMode(modeId: GameModeId): void {
+  selectedGameMode = modeId;
+  for (const option of mainMenu.gameModeOptions) {
+    setGameModeSelected(option.button, option.statusEl, option.id === modeId);
+  }
   setStartButtonEnabled(mainMenu.startButton, true);
   playBackgroundMusic();
 
-  // Only reveal the top-down map preview (and generate the layout) once the user selects the game mode.
-  mainMenu.mapPreviewContainer.style.display = 'flex';
+  mainMenu.mapPreviewContainer.style.display = "flex";
+  setMapPreviewVisible(mainMenu.root, true);
   if (!currentWorld) {
     generatePreview();
   }
+}
 
-  mainMenu.gameModeOption.classList.add("selecting");
-  setTimeout(() => mainMenu.gameModeOption.classList.remove("selecting"), 380);
-});
+for (const option of mainMenu.gameModeOptions) {
+  option.button.addEventListener("click", () => {
+    selectGameMode(option.id);
+  });
+}
 
 mainMenu.startButton.addEventListener("click", startGame);
 
@@ -307,6 +358,12 @@ if (import.meta.hot) {
       disposeWorld(currentWorld);
       currentWorld = undefined;
     }
+    if (staminaBar) {
+      staminaBar.remove();
+      staminaBar = undefined;
+    }
+    getStamina = undefined;
+    gameClouds = [];
     if (mainMenu.root.parentNode) mainMenu.root.remove();
     if (menuStyle.parentNode) menuStyle.remove();
     renderer.dispose();

@@ -9,17 +9,17 @@ import {
 
 describe("setGameModeSelected", () => {
   it("updates selection state and ARIA", () => {
-    const { button, statusEl } = buildGameModeOption("Open World", "SELECT");
+    const { button, statusEl } = buildGameModeOption("open-world", "Open World", "");
 
     setGameModeSelected(button, statusEl, true);
     expect(button.classList.contains("selected")).toBe(true);
     expect(button.getAttribute("aria-checked")).toBe("true");
-    expect(statusEl.textContent).toBe("✓ SELECTED");
+    expect(statusEl.textContent).toBe("Selected");
 
     setGameModeSelected(button, statusEl, false);
     expect(button.classList.contains("selected")).toBe(false);
     expect(button.getAttribute("aria-checked")).toBe("false");
-    expect(statusEl.textContent).toBe("SELECT");
+    expect(statusEl.textContent).toBe("");
   });
 });
 
@@ -41,12 +41,20 @@ describe("setStartButtonEnabled", () => {
 });
 
 describe("buildMainMenu", () => {
+  it("renders both game mode options", () => {
+    const menu = buildMainMenu();
+
+    expect(menu.gameModeOptions).toHaveLength(2);
+    expect(menu.root.querySelector("#game-mode-open-world")?.textContent).toContain("Open World");
+    expect(menu.root.querySelector("#game-mode-hunted")?.textContent).toContain("Hunted");
+  });
+
   it("renders accessible menu shell with logo and title", () => {
     const menu = buildMainMenu();
 
     expect(menu.root.id).toBe("main-menu");
     expect(menu.root.getAttribute("role")).toBe("dialog");
-    expect(menu.root.querySelector("#menu-title")?.textContent).toBe("VIBE PARKOUR");
+    expect(menu.root.querySelector("#menu-title")?.textContent).toBe("Vibe Parkour");
     expect(menu.root.querySelector(".menu-logo")).toBeTruthy();
     expect(menu.startButton.disabled).toBe(true);
   });
