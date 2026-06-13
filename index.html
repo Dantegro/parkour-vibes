@@ -4,10 +4,87 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Three.js</title>
+  <title>Vibe Parkour — Free Browser Parkour Game</title>
+  <meta name="description"
+    content="Play Vibe Parkour free in your browser. Chill first-person parkour across procedural terrain with lofi music — no download required." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://game.dantegro.com/" />
+  <meta name="application-name" content="Vibe Parkour" />
+  <meta name="theme-color" content="#16161c" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Vibe Parkour" />
+  <meta property="og:title" content="Vibe Parkour — Free Browser Parkour Game" />
+  <meta property="og:description"
+    content="Chill first-person parkour across procedural terrain with lofi music. Play free in your browser — no download." />
+  <meta property="og:url" content="https://game.dantegro.com/" />
+  <meta property="og:image" content="https://game.dantegro.com/og-image.svg" />
+  <meta property="og:image:alt" content="Vibe Parkour — browser parkour game" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Vibe Parkour — Free Browser Parkour Game" />
+  <meta name="twitter:description"
+    content="Chill first-person parkour across procedural terrain with lofi music. Play free in your browser." />
+  <meta name="twitter:image" content="https://game.dantegro.com/og-image.svg" />
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      "name": "Vibe Parkour",
+      "description": "A free browser-based parkour game with chill movement, lofi ambience, and procedural obstacles to climb.",
+      "url": "https://game.dantegro.com/",
+      "image": "https://game.dantegro.com/og-image.svg",
+      "applicationCategory": "Game",
+      "gamePlatform": "Web browser",
+      "operatingSystem": "Any",
+      "inLanguage": "en",
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
+      },
+      "author": {
+        "@type": "Person",
+        "url": "https://dantegro.com"
+      }
+    }
+  </script>
+
+  <style>
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+  </style>
 </head>
 
 <body>
+  <header class="sr-only">
+    <h1>Vibe Parkour</h1>
+    <p>
+      Vibe Parkour is a free browser parkour game. Explore procedural open-world terrain,
+      jump across crates and buildings, and enjoy lofi background music — no install required.
+      Use WASD to move, Space to jump, and the mouse to look around.
+    </p>
+  </header>
+  <noscript>
+    <p>
+      Vibe Parkour requires JavaScript. Enable JavaScript in your browser to play this
+      free browser parkour game at <a href="https://game.dantegro.com/">game.dantegro.com</a>.
+    </p>
+  </noscript>
   <canvas
     id="game"
     role="application"
