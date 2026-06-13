@@ -9,6 +9,9 @@ export interface MainMenuElements {
   volumeSlider: HTMLInputElement;
   volumeValue: HTMLSpanElement;
   updateVolumeDisplay: (volume: number) => void;
+  mapPreviewCanvas: HTMLCanvasElement;
+  regenerateButton: HTMLButtonElement;
+  mapPreviewContainer: HTMLDivElement;
 }
 
 export interface MainMenuStyleHandle {
@@ -114,6 +117,21 @@ export function injectMainMenuStyles(): MainMenuStyleHandle {
     background: #16161c;
     border-color: #333338;
     color: #888;
+  }
+  #map-regen-btn {
+    margin-top: 6px;
+    font-size: 9px;
+    padding: 3px 8px;
+    letter-spacing: 1px;
+    background: #1a1a22;
+    color: #aaa;
+    border: 1px solid #464652;
+    cursor: pointer;
+    transition: background .08s, color .08s;
+  }
+  #map-regen-btn:hover {
+    background: #24242e;
+    color: #ccc;
   }
 `;
   document.head.appendChild(element);
@@ -264,6 +282,33 @@ export function buildMainMenu(): MainMenuElements {
   );
   modeGroup.appendChild(gameModeOption);
 
+  // Map preview (top-down orthographic view of the generated boxes) + regenerate control.
+  // Placed right after the mode selector so players can inspect layout before starting.
+  const previewSection = document.createElement("div");
+  previewSection.style.cssText =
+    "margin:10px 0 4px;display:flex;flex-direction:column;align-items:center;";
+
+  const previewLabel = document.createElement("div");
+  previewLabel.style.cssText =
+    "font-size:9px;letter-spacing:1.5px;opacity:0.45;margin-bottom:4px;";
+  previewLabel.textContent = "MAP LAYOUT PREVIEW (TOP DOWN)";
+
+  const canvas = document.createElement("canvas");
+  canvas.id = "map-preview";
+  canvas.style.cssText =
+    "width:240px;height:240px;border:1px solid #3a3a44;border-radius:2px;background:#111;display:block;";
+
+  const regenerateButton = document.createElement("button");
+  regenerateButton.id = "map-regen-btn";
+  regenerateButton.type = "button";
+  regenerateButton.textContent = "REGENERATE LAYOUT";
+  applyA11y(regenerateButton, {
+    "aria-label": "Regenerate the map layout preview",
+  });
+
+  previewSection.append(previewLabel, canvas, regenerateButton);
+  previewSection.style.display = 'none';  // only show after user selects a game mode
+
   const startButton = buildGameStartButton();
   const { container: volumeContainer, slider: volumeSlider, valueEl: volumeValue } =
     buildMusicVolumeControl();
@@ -272,9 +317,9 @@ export function buildMainMenu(): MainMenuElements {
   hint.id = "menu-hint";
   hint.style.cssText = "margin:14px 0 0;font-size:10px;opacity:0.35;";
   hint.textContent =
-    "Select a game mode, then press START GAME or Enter to begin. M toggles music. WASD and mouse after lock.";
+    "Select a game mode, then press START GAME or Enter to begin. M toggles music. WASD and mouse after lock. Regenerate if the preview layout looks bad.";
 
-  root.append(title, tagline, gamesLabel, modeGroup, startButton, volumeContainer, hint);
+  root.append(title, tagline, gamesLabel, modeGroup, previewSection, startButton, volumeContainer, hint);
 
   function updateVolumeDisplay(volume: number): void {
     volumeSlider.value = volume.toString();
@@ -293,6 +338,9 @@ export function buildMainMenu(): MainMenuElements {
     volumeSlider,
     volumeValue,
     updateVolumeDisplay,
+    mapPreviewCanvas: canvas,
+    regenerateButton,
+    mapPreviewContainer: previewSection,
   };
 }
 

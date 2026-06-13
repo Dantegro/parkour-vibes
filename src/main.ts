@@ -40,6 +40,8 @@ c.style.display = "none";
 
 let prevTime = 0;
 
+const PREVIEW_SIZE = 240;
+
 let scene: THREE.Scene | undefined;
 let cube: THREE.Mesh | undefined;
 let camera: THREE.PerspectiveCamera | undefined;
@@ -53,6 +55,9 @@ let gameStarted = false;
 let selectedGameMode: string | null = null;
 let gameEntryEl: HTMLButtonElement | undefined;
 let gamesLabelEl: HTMLDivElement | undefined;
+
+let previewRenderer: THREE.WebGLRenderer | undefined;
+let currentWorld: ReturnType<typeof createWorld> | undefined;
 
 function startGame() {
   if (!selectedGameMode) {
@@ -76,15 +81,27 @@ function startGame() {
 
   menu.remove();
 
-  // Lazily create the world and player controls when leaving the menu
-  const world = createWorld();
-  scene = world.scene;
-  cube = world.cube;
+  // Use the last previewed world (if the player liked the layout and possibly regenerated)
+  // so their choice is respected. Fall back to a fresh generation only if no preview existed.
+  let worldToUse: ReturnType<typeof createWorld>;
+  if (currentWorld) {
+    worldToUse = currentWorld;
+    // Clean up only the preview renderer (the world meshes stay alive for gameplay)
+    if (previewRenderer) {
+      previewRenderer.dispose();
+      previewRenderer = undefined;
+    }
+  } else {
+    worldToUse = createWorld();
+  }
+
+  scene = worldToUse.scene;
+  cube = worldToUse.cube;
 
   const playerAPI = initPlayerControls(
     renderer.domElement,
-    world.collidables,
-    world.ground
+    worldToUse.collidables,
+    worldToUse.ground
   );
   camera = playerAPI.camera;
   updateMovement = playerAPI.updateMovement;
@@ -95,6 +112,43 @@ function startGame() {
   c.removeAttribute("aria-hidden");
   prevTime = performance.now();
   animate();
+}
+
+function exitToMenu() {
+  if (!gameStarted) return;
+
+  gameStarted = false;
+
+  if (disposeControls) {
+    disposeControls();
+    disposeControls = undefined;
+  }
+
+  // Clean up game state so animate early-returns
+  scene = undefined;
+  cube = undefined;
+  camera = undefined;
+  updateMovement = undefined;
+
+  // Hide the game canvas
+  c.style.display = "none";
+  c.setAttribute("aria-hidden", "true");
+
+  // Re-show the main menu (its DOM state like selected mode and preview visibility is preserved)
+  if (menu && !menu.parentNode) {
+    document.body.appendChild(menu);
+  }
+
+  // Re-prepare the preview renderer (was disposed on start) so that "REGENERATE LAYOUT"
+  // works immediately after returning to the menu. The canvas bitmap from before
+  // entering the game is still visible.
+  if (mainMenu && mainMenu.mapPreviewCanvas) {
+    const cvs = mainMenu.mapPreviewCanvas;
+    if (!previewRenderer) {
+      previewRenderer = new THREE.WebGLRenderer({ canvas: cvs, antialias: false });
+      previewRenderer.setSize(PREVIEW_SIZE, PREVIEW_SIZE);
+    }
+  }
 }
 
 function animate() {
@@ -124,6 +178,64 @@ gameEntryEl = mainMenu.gameModeOption;
 gamesLabelEl = mainMenu.gamesLabel;
 document.body.appendChild(menu);
 
+// --- Map preview (top-down orthographic view) setup ---
+const previewCanvas = mainMenu.mapPreviewCanvas;
+previewCanvas.width = PREVIEW_SIZE;
+previewCanvas.height = PREVIEW_SIZE;
+previewRenderer = new THREE.WebGLRenderer({ canvas: previewCanvas, antialias: false });
+previewRenderer.setSize(PREVIEW_SIZE, PREVIEW_SIZE);
+
+function disposeWorld(world: ReturnType<typeof createWorld>) {
+  world.scene.traverse((child: any) => {
+    if (child.geometry?.dispose) child.geometry.dispose();
+    const mat = child.material;
+    if (mat) {
+      if (Array.isArray(mat)) {
+        mat.forEach((m: any) => m.dispose && m.dispose());
+      } else if (mat.dispose) {
+        mat.dispose();
+      }
+    }
+  });
+}
+
+function generatePreview(regenerate = false) {
+  if (currentWorld && regenerate) {
+    disposeWorld(currentWorld);
+    currentWorld = undefined;
+  }
+  currentWorld = createWorld();
+
+  // Frame an orthographic top-down camera on the actual placed boxes (not the whole ground)
+  const bbox = new THREE.Box3();
+  currentWorld.collidables.forEach((m) => bbox.expandByObject(m));
+
+  let center = new THREE.Vector3(0, 0, 0);
+  let viewSize = 140;
+  if (!bbox.isEmpty()) {
+    center = bbox.getCenter(new THREE.Vector3());
+    const s = bbox.getSize(new THREE.Vector3());
+    viewSize = Math.max(s.x, s.z) * 1.4;
+    if (viewSize < 60) viewSize = 140;
+  }
+
+  const aspect = PREVIEW_SIZE / PREVIEW_SIZE;
+  const halfH = viewSize / 2;
+  const halfW = halfH * aspect;
+
+  const cam = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, 1, 300);
+  cam.position.set(center.x, 90, center.z);
+  cam.lookAt(center.x, 0, center.z);
+
+  previewRenderer!.render(currentWorld.scene, cam);
+}
+
+// Wire regenerate (player can re-roll until the box layout looks good)
+// Listener is attached early; the button itself is only visible after mode selection.
+mainMenu.regenerateButton.addEventListener("click", () => {
+  generatePreview(true);
+});
+
 initBackgroundMusic();
 mainMenu.updateVolumeDisplay(getMusicVolume());
 
@@ -138,6 +250,12 @@ mainMenu.gameModeOption.addEventListener("click", () => {
   setGameModeSelected(mainMenu.gameModeOption, mainMenu.gameModeStatus, true);
   setStartButtonEnabled(mainMenu.startButton, true);
   playBackgroundMusic();
+
+  // Only reveal the top-down map preview (and generate the layout) once the user selects the game mode.
+  mainMenu.mapPreviewContainer.style.display = 'flex';
+  if (!currentWorld) {
+    generatePreview();
+  }
 
   mainMenu.gameModeOption.classList.add("selecting");
   setTimeout(() => mainMenu.gameModeOption.classList.remove("selecting"), 380);
@@ -174,10 +292,26 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
+// ESC during gameplay returns to the main menu (home screen)
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Escape" && gameStarted) {
+    e.preventDefault();
+    exitToMenu();
+  }
+}, true); // capture to intercept before pointer-lock handlers if possible
+
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     if (disposeControls) disposeControls();
     disposeBackgroundMusic();
+    if (previewRenderer) {
+      previewRenderer.dispose();
+      previewRenderer = undefined;
+    }
+    if (currentWorld) {
+      disposeWorld(currentWorld);
+      currentWorld = undefined;
+    }
     if (menu && menu.parentNode) menu.remove();
     if (menuStyle && menuStyle.parentNode) menuStyle.remove();
     renderer.dispose();
