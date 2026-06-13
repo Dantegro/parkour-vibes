@@ -7,6 +7,7 @@ import {
 } from "./player/movement.js";
 import type { CollisionWorld } from "./player/collision.js";
 import { placePlayerOnGround } from "./player/collision.js";
+import { buildGameStartOverlay } from "./ui/gameOverlay.js";
 
 export interface PlayerAPI {
   camera: THREE.PerspectiveCamera;
@@ -32,14 +33,10 @@ export function initPlayerControls(
 
   const controls = new PointerLockControls(camera, domElement);
 
-  const instructions = document.createElement("div");
-  instructions.style.cssText =
-    "position:fixed;inset:0;display:grid;place-items:center;color:#ccc;font-family:sans-serif;text-align:center;z-index:10;background:linear-gradient(rgba(0,0,0,0.12),rgba(0,0,0,0.2));user-select:none;cursor:pointer;";
-  instructions.innerHTML =
-    "Click to start<br><small>WASD to move • Space to jump • Mouse to look</small><br><small>(enters fullscreen for immersion)</small>";
-  document.body.appendChild(instructions);
+  const startOverlay = buildGameStartOverlay();
+  document.body.appendChild(startOverlay.element);
 
-  instructions.addEventListener("click", async (event) => {
+  startOverlay.element.addEventListener("click", async (event) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -53,14 +50,14 @@ export function initPlayerControls(
   });
 
   controls.addEventListener("lock", () => {
-    instructions.style.display = "none";
+    startOverlay.hide();
     controls.enabled = true;
     controls.pointerSpeed = 1;
     camera.quaternion.copy(initialCameraQuaternion);
   });
 
   controls.addEventListener("unlock", () => {
-    instructions.style.display = "grid";
+    startOverlay.show();
     controls.enabled = true;
     controls.pointerSpeed = 1;
   });
@@ -134,7 +131,7 @@ export function initPlayerControls(
   }
 
   function dispose() {
-    instructions.remove();
+    startOverlay.element.remove();
     controls.disconnect();
     window.removeEventListener("keydown", handleKeyDown);
     window.removeEventListener("keyup", handleKeyUp);
