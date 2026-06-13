@@ -37,17 +37,17 @@ export function injectMainMenuStyles(): MainMenuStyleHandle {
     text-align: center;
     min-height: 100%;
     box-sizing: border-box;
-    padding: 28px 24px 40px;
+    padding: 34px 29px 48px;
     justify-content: center;
   }
   #main-menu.menu-expanded .menu-content {
     justify-content: flex-start;
-    padding-top: 36px;
+    padding-top: 43px;
   }
   .menu-logo {
-    width: 72px;
+    width: 86px;
     height: auto;
-    margin: 0 0 14px;
+    margin: 0 0 17px;
     display: block;
     animation: menuLogoFloat 4.2s ease-in-out infinite;
   }
@@ -61,34 +61,29 @@ export function injectMainMenuStyles(): MainMenuStyleHandle {
     }
   }
   .menu-title {
-    font-size: 36px;
+    font-size: 43px;
     font-weight: 600;
-    margin: 0 0 6px;
+    margin: 0 0 32px;
     color: #eeeef2;
   }
-  .menu-tagline {
-    font-size: 13px;
-    color: #888894;
-    margin: 0 0 40px;
-  }
   .menu-section-label {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
     color: #888894;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
   }
   .menu-entry {
-    width: 280px;
-    padding: 12px 14px;
+    width: 336px;
+    padding: 14px 17px;
     border: 1px solid #3a3a44;
-    border-radius: 6px;
+    border-radius: 7px;
     background: #1c1c22;
     color: #d4d4dc;
-    font-size: 14px;
+    font-size: 17px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 14px;
     user-select: none;
     cursor: pointer;
     font-family: inherit;
@@ -104,7 +99,7 @@ export function injectMainMenuStyles(): MainMenuStyleHandle {
     background: #1e2430;
   }
   .menu-entry .mode-status {
-    font-size: 12px;
+    font-size: 14px;
     color: #888894;
     flex-shrink: 0;
   }
@@ -112,34 +107,34 @@ export function injectMainMenuStyles(): MainMenuStyleHandle {
     color: #8ab0d8;
   }
   .menu-preview-section {
-    margin: 16px 0 8px;
+    margin: 19px 0 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
   }
   .menu-preview-label {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
     color: #888894;
-    margin-bottom: 6px;
+    margin-bottom: 7px;
   }
   #map-preview {
-    width: 220px;
-    height: 220px;
+    width: 264px;
+    height: 264px;
     border: 1px solid #3a3a44;
     border-radius: 4px;
     background: #0e0e12;
     display: block;
   }
   #menu-start-btn {
-    margin-top: 24px;
-    padding: 10px 28px;
-    font-size: 14px;
+    margin-top: 29px;
+    padding: 12px 34px;
+    font-size: 17px;
     font-weight: 500;
     background: #2a4a7a;
     color: #f0f4fa;
     border: 1px solid #3a5a8a;
-    border-radius: 6px;
+    border-radius: 7px;
     cursor: pointer;
     transition: background 0.12s ease, opacity 0.12s ease;
   }
@@ -157,9 +152,9 @@ export function injectMainMenuStyles(): MainMenuStyleHandle {
     color: #888894;
   }
   #map-regen-btn {
-    margin-top: 8px;
-    font-size: 12px;
-    padding: 5px 10px;
+    margin-top: 10px;
+    font-size: 14px;
+    padding: 6px 12px;
     background: transparent;
     color: #a0a0ac;
     border: 1px solid #3a3a44;
@@ -172,37 +167,37 @@ export function injectMainMenuStyles(): MainMenuStyleHandle {
     color: #d4d4dc;
   }
   .menu-volume {
-    margin-top: 20px;
+    margin-top: 24px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
   }
   .menu-volume-label {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
     color: #888894;
   }
   .menu-volume-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
   }
   #music-volume {
-    width: 140px;
+    width: 168px;
     accent-color: #5a7aaa;
     cursor: pointer;
   }
   #music-volume-value {
-    font-size: 12px;
+    font-size: 14px;
     color: #888894;
-    width: 32px;
+    width: 38px;
     text-align: right;
   }
   .menu-hint {
-    margin: 16px 24px 0;
-    max-width: 360px;
-    font-size: 12px;
+    margin: 19px 29px 0;
+    max-width: 432px;
+    font-size: 14px;
     line-height: 1.5;
     color: #686874;
   }
@@ -328,8 +323,8 @@ export function buildMainMenu(): MainMenuElements {
   const logo = document.createElement("img");
   logo.className = "menu-logo";
   logo.src = "/favicon.svg";
-  logo.width = 72;
-  logo.height = 69;
+  logo.width = 86;
+  logo.height = 83;
   logo.alt = "";
   logo.setAttribute("aria-hidden", "true");
 
@@ -337,10 +332,6 @@ export function buildMainMenu(): MainMenuElements {
   title.id = "menu-title";
   title.className = "menu-title";
   title.textContent = "Vibe Parkour";
-
-  const tagline = document.createElement("p");
-  tagline.className = "menu-tagline";
-  tagline.textContent = "Early prototype";
 
   const gamesLabel = document.createElement("div");
   gamesLabel.id = "game-modes-label";
@@ -390,7 +381,7 @@ export function buildMainMenu(): MainMenuElements {
   hint.textContent =
     "Select a game mode, then start. Shift to sprint, M toggles music, Enter also starts.";
 
-  content.append(logo, title, tagline, gamesLabel, modeGroup, previewSection, startButton, volumeContainer, hint);
+  content.append(logo, title, gamesLabel, modeGroup, previewSection, startButton, volumeContainer, hint);
   root.appendChild(content);
 
   function updateVolumeDisplay(volume: number): void {

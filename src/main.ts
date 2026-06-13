@@ -41,7 +41,7 @@ c.style.display = "none";
 
 let prevTime = 0;
 
-const PREVIEW_SIZE = 240;
+const PREVIEW_SIZE = 288;
 
 let scene: THREE.Scene | undefined;
 let cube: THREE.Mesh | undefined;
