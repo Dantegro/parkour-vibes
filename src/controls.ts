@@ -21,11 +21,12 @@ export interface PlayerAPI {
   updateMovement: (delta: number) => void;
   dispose: () => void;
   getStamina: () => number;
-  playerMesh?: THREE.Group;
+  onResize: (width: number, height: number) => void;
 }
 
 export function initPlayerControls(
   domElement: HTMLElement,
+  scene: THREE.Scene,
   collidables: THREE.Mesh[] = [],
   groundMesh?: THREE.Mesh,
   onExitToMenu?: () => void,
@@ -126,6 +127,7 @@ export function initPlayerControls(
   movementState.prevEyeZ = playerEyePos.z;
 
   const playerModel = createPlayerModel();
+  scene.add(playerModel);
   let thirdPersonT = 0;
 
   function readInput(): MovementInput {
@@ -166,6 +168,14 @@ export function initPlayerControls(
     );
   }
 
+  function onResize(width: number, height: number) {
+    const aspect = width / height;
+    lookCamera.aspect = aspect;
+    lookCamera.updateProjectionMatrix();
+    renderCamera.aspect = aspect;
+    renderCamera.updateProjectionMatrix();
+  }
+
   function dispose() {
     startOverlay.element.remove();
     controls.disconnect();
@@ -173,6 +183,7 @@ export function initPlayerControls(
     window.removeEventListener("keyup", handleKeyUp);
     domElement.removeEventListener("contextmenu", handleContextMenu);
 
+    scene.remove(playerModel);
     disposeMeshes(playerModel);
   }
 
@@ -182,6 +193,6 @@ export function initPlayerControls(
     updateMovement,
     dispose,
     getStamina: () => movementState.stamina,
-    playerMesh: playerModel,
+    onResize,
   };
 }

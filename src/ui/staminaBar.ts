@@ -56,8 +56,6 @@ export function createStaminaBar(): StaminaBar {
     container.remove();
   }
 
-  hide();
-
   return {
     element: container,
     update,

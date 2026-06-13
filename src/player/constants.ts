@@ -50,6 +50,25 @@ export const TERRAIN_GROUND_SMOOTH_TAU_DOWN = 0.24;
 /** Max allowed lag of smoothed ground below the sampled height when climbing (prevents visible foot sink). */
 export const TERRAIN_MAX_SINK = 0.1;
 
+/** Box-top resting / landing tolerances (feet relative to box.max.y). */
+export const BOX_REST_STEP_MIN = -0.03;
+export const BOX_REST_STEP_MAX = 0.08;
+export const BOX_REST_FEET_MARGIN = 0.05;
+export const ON_TERRAIN_FEET_ABOVE = 0.2;
+export const FEET_RESTING_STEP_MIN = -0.08;
+export const FEET_RESTING_STEP_MAX = 0.2;
+export const FEET_ON_BOX_MARGIN = 0.1;
+
+/** Terrain penetration recovery and stick bands. */
+export const TERRAIN_PENETRATION_TOLERANCE = 0.05;
+export const TERRAIN_STICK_BELOW = -0.15;
+export const TERRAIN_SAMPLE_MOVE_THRESHOLD = 0.02;
+export const TERRAIN_SAMPLE_PRIMARY_WEIGHT = 0.65;
+export const TERRAIN_SAMPLE_MIDPOINT_WEIGHT = 0.35;
+
+/** Vertical velocity above which the player is treated as rising (blocks terrain stick). */
+export const RISING_VELOCITY_THRESHOLD = 0.1;
+
 /** Third-person view tuning (hold C). */
 export const THIRD_PERSON_DISTANCE = 4.2;
 export const THIRD_PERSON_HEIGHT = 1.7;

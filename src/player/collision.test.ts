@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { PLAYER_EYE_HEIGHT } from "./constants.js";
 import { resolveWalls, type CollisionWorld } from "./collision.js";
+import { createMovementState } from "./movement.js";
 
 function makeBoxCollidable(
   x: number,
@@ -15,6 +16,10 @@ function makeBoxCollidable(
   mesh.position.set(x, baseY + height / 2, z);
   mesh.updateMatrixWorld(true);
   return mesh;
+}
+
+function floorState(overrides: Partial<ReturnType<typeof createMovementState>> = {}) {
+  return { ...createMovementState(), ...overrides };
 }
 
 describe("resolveWalls", () => {
@@ -63,19 +68,15 @@ describe("resolveFloors", () => {
 
     const result = resolveFloors(
       eyePos,
-      {
+      floorState({
         velocityY: -5,
         canJump: false,
         prevFeetY: 3.5,
-        smoothedGroundY: 0,
-        prevEyeX: 0,
-        prevEyeZ: 0,
-        wasOnSurface: false,
-        isMoving: false,
-      },
+      }),
       world,
       raycaster,
       rayOrigin,
+      false,
     );
 
     expect(result.onSurface).toBe(true);
@@ -94,19 +95,16 @@ describe("resolveFloors", () => {
 
     const result = resolveFloors(
       eyePos,
-      {
+      floorState({
         velocityY: -8,
         canJump: false,
         prevFeetY: 2.55,
-        smoothedGroundY: 0,
         prevEyeX: 1.42,
-        prevEyeZ: 0,
-        wasOnSurface: false,
-        isMoving: false,
-      },
+      }),
       world,
       raycaster,
       rayOrigin,
+      false,
     );
 
     expect(result.onSurface).toBe(true);
@@ -142,19 +140,17 @@ describe("resolveFloors", () => {
     const eyePos = new THREE.Vector3(startX, startGround + PLAYER_EYE_HEIGHT, z);
     const first = resolveFloors(
       eyePos,
-      {
-        velocityY: 0,
-        canJump: true,
+      floorState({
         prevFeetY: startGround,
         smoothedGroundY: startGround,
         prevEyeX: startX,
         prevEyeZ: z,
-        wasOnSurface: true,
-        isMoving: true,
-      },
+        onSurface: true,
+      }),
       world,
       raycaster,
       rayOrigin,
+      true,
       delta,
     );
     expect(first.onSurface).toBe(true);
@@ -163,19 +159,17 @@ describe("resolveFloors", () => {
     const beforeY = eyePos.y;
     const second = resolveFloors(
       eyePos,
-      {
-        velocityY: 0,
-        canJump: true,
+      floorState({
         prevFeetY: first.feetY,
         smoothedGroundY: first.smoothedGroundY,
         prevEyeX: startX,
         prevEyeZ: z,
-        wasOnSurface: true,
-        isMoving: true,
-      },
+        onSurface: true,
+      }),
       world,
       raycaster,
       rayOrigin,
+      true,
       delta,
     );
 
@@ -205,19 +199,15 @@ describe("resolveFloors", () => {
 
     const idle = resolveFloors(
       eyePos,
-      {
-        velocityY: 0,
-        canJump: true,
+      floorState({
         prevFeetY: staleSmoothedY,
         smoothedGroundY: staleSmoothedY,
-        prevEyeX: 0,
-        prevEyeZ: 0,
-        wasOnSurface: true,
-        isMoving: false,
-      },
+        onSurface: true,
+      }),
       world,
       raycaster,
       rayOrigin,
+      false,
       delta,
     );
 
@@ -228,19 +218,15 @@ describe("resolveFloors", () => {
     const yAfterSnap = eyePos.y;
     const idleAgain = resolveFloors(
       eyePos,
-      {
-        velocityY: 0,
-        canJump: true,
+      floorState({
         prevFeetY: idle.feetY,
         smoothedGroundY: idle.smoothedGroundY,
-        prevEyeX: 0,
-        prevEyeZ: 0,
-        wasOnSurface: true,
-        isMoving: false,
-      },
+        onSurface: true,
+      }),
       world,
       raycaster,
       rayOrigin,
+      false,
       delta,
     );
 

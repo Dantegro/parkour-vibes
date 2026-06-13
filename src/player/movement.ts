@@ -16,7 +16,6 @@ import {
 } from "./constants.js";
 import {
   type CollisionWorld,
-  type FloorContext,
   resolveFloors,
   resolveWalls,
 } from "./collision.js";
@@ -61,6 +60,17 @@ export function createMovementState(): MovementState {
   };
 }
 
+/**
+ * Consume a jump input if grounded. Used before and after floor resolve:
+ * pre-resolve for sprint-jumping off ledges; post-resolve for grounded jumps.
+ */
+export function tryConsumeJump(state: MovementState, jumpPressed: boolean): boolean {
+  if (!jumpPressed || !state.canJump) return false;
+  state.velocityY = JUMP_VELOCITY;
+  state.canJump = false;
+  return true;
+}
+
 // Reusable temps for movement direction derivation (no per-frame allocations).
 const _moveForward = new THREE.Vector3();
 const _moveRight = new THREE.Vector3();
@@ -78,11 +88,7 @@ export function updatePlayerMovement(
 ): void {
   if (!isLocked) return;
 
-  // Apply jump before wall/floor resolves to avoid spurious wall push when sprint-jumping off edges.
-  if (input.jump && state.canJump) {
-    state.velocityY = JUMP_VELOCITY;
-    state.canJump = false;
-  }
+  tryConsumeJump(state, input.jump);
 
   const horizontalMove = { x: 0, z: 0 };
   const moveLen = Math.hypot(input.strafe, input.forward);
@@ -118,23 +124,13 @@ export function updatePlayerMovement(
     playerEye.y += state.velocityY * delta;
   }
 
-  const floorCtx: FloorContext = {
-    velocityY: state.velocityY,
-    canJump: state.canJump,
-    prevFeetY: state.prevFeetY,
-    smoothedGroundY: state.smoothedGroundY,
-    prevEyeX: state.prevEyeX,
-    prevEyeZ: state.prevEyeZ,
-    wasOnSurface: state.onSurface,
-    isMoving: moveLen > 0,
-  };
-
   const floor = resolveFloors(
     playerEye,
-    floorCtx,
+    state,
     world,
     raycaster,
     rayOrigin,
+    moveLen > 0,
     delta,
   );
   state.velocityY = floor.velocityY;
@@ -144,12 +140,8 @@ export function updatePlayerMovement(
 
   resolveWalls(playerEye, world.collidables);
 
-  if (input.jump && state.canJump) {
-    state.velocityY = JUMP_VELOCITY;
-    state.canJump = false;
-  }
+  tryConsumeJump(state, input.jump);
 
-  // Stamina drain/regen while sprinting on ground.
   const isMoving = moveLen > 0;
   const isSprintingNow = state.currentSpeed > WALK_SPEED * 1.05 && isMoving;
 
@@ -160,7 +152,6 @@ export function updatePlayerMovement(
     state.stamina = Math.min(STAMINA_MAX, state.stamina + STAMINA_REGEN_RATE * mult * delta);
   }
 
-  // Hysteresis: after depletion, block sprint until stamina regens past the restore threshold.
   if (state.stamina <= 0) {
     state.sprintExhausted = true;
   } else if (state.sprintExhausted && state.stamina >= STAMINA_RESTORE_THRESHOLD) {

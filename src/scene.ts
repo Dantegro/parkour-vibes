@@ -1,7 +1,9 @@
 import * as THREE from "three";
+import type { GameModeId } from "./gameModes.js";
+import { sampleGroundHeight } from "./player/collision.js";
 import { createClouds } from "./world/clouds.js";
 
-export function createWorld() {
+export function createWorld(mode: GameModeId = "open-world") {
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x87ceeb, 0.0018);
 
@@ -38,7 +40,7 @@ export function createWorld() {
     tempColor.copy(lowColor).lerp(highColor, t * 0.75 + 0.25);
     colors.push(tempColor.r, tempColor.g, tempColor.b);
   }
-  groundGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  groundGeo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
 
   const ground = new THREE.Mesh(
     groundGeo,
@@ -51,16 +53,12 @@ export function createWorld() {
   const collidables: THREE.Mesh[] = [];
 
   const raycaster = new THREE.Raycaster();
-  const down = new THREE.Vector3(0, -1, 0);
   const rayOrigin = new THREE.Vector3();
   const candidateBox = new THREE.Box3();
   const existingBox = new THREE.Box3();
 
   function getGroundHeightAt(wx: number, wz: number) {
-    rayOrigin.set(wx, 100, wz);
-    raycaster.set(rayOrigin, down);
-    const hits = raycaster.intersectObject(ground, false);
-    return hits.length > 0 ? hits[0].point.y : 0;
+    return sampleGroundHeight(ground, wx, wz, raycaster, rayOrigin);
   }
 
   function randomInRange(min: number, max: number): number {
@@ -90,8 +88,10 @@ export function createWorld() {
   scene.add(cube);
   collidables.push(cube);
 
+  const tallBuildingCount = mode === "hunted" ? 22 : 18;
+
   // Tall buildings
-  for (let i = 0; i < 18; i++) {
+  for (let i = 0; i < tallBuildingCount; i++) {
     for (let attempt = 0; attempt < 25; attempt++) {
       const width = randomInRange(2.8, 5.2);
       const depth = randomInRange(2.8, 5.2);
@@ -144,5 +144,5 @@ export function createWorld() {
     }
   }
 
-  return { scene, cube, collidables, ground, clouds };
+  return { scene, cube, collidables, ground, clouds, mode };
 }
