@@ -70,7 +70,7 @@ public/       # static assets (sounds, icons)
 
 ## Status
 
-Active work-in-progress. Expect some rough gameplay mechanics and UI for now — feedback and PRs welcome.
+Active work-in-progress. Expect some rough gameplay mechanics and UI for now.
 
 ## License
 
