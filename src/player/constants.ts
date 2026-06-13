@@ -34,8 +34,34 @@ export const WALL_FRICTION = 0.82;
 export const MAX_STEP_HEIGHT = 1.8;
 export const LAND_SNAP_TOLERANCE = 0.4;
 /** Extra XZ leeway when snapping onto a box top (lip / corner landings). */
-export const BOX_TOP_EDGE_GRACE = 0.2;
+export const BOX_TOP_EDGE_GRACE = 0.27;
 /** Vertical window around a box top for lip clearance and swept landing. */
-export const BOX_TOP_LAND_MARGIN = 0.11;
+export const BOX_TOP_LAND_MARGIN = 0.13;
 /** Feet within this of terrain surface → follow ground height. */
 export const TERRAIN_STICK_FEET = 0.25;
+
+/**
+ * Look-behind / rear glance (hold C) tuning and transition.
+ * This feature moves the camera behind the player and orients it to look at your character
+ * so you can see yourself from behind while continuing to move in the direction you were facing.
+ * It is intentionally a temporary "look over your shoulder" / rear view rather than a full
+ * third-person follow cam.
+ */
+export const LOOK_BEHIND_DISTANCE = 4.2;      // meters behind the player (horizontal)
+export const LOOK_BEHIND_HEIGHT = 1.7;        // meters above the eye when fully looking behind
+export const LOOK_BEHIND_TARGET_HEIGHT = 0.6; // vertical offset from eye for the look-at target on the character
+export const LOOK_BEHIND_TRANSITION_TAU = 0.22; // seconds; exponential smoothing for the glance animation
+
+/** Time constant for damping the look-at target point used to orient the camera while looking behind.
+ *  Reduces high-frequency jitter from terrain following (the fixed 0.25 lerp in collision), collision
+ *  pushes, and ground ray samples when the camera is offset and sprint speed (thus traversal rate
+ *  over uneven ground) is changing during the transition. Position blend remains direct/snappy. */
+export const LOOK_BEHIND_LOOK_TARGET_TAU = 0.10;
+
+/** Time constant for light position smoothing on the render camera during look-behind transitions.
+ *  Applied only while the blend t is in the active range (not extremely close to 0 or 1).
+ *  This damps residual left/right (and other) jitter in camera position caused by high-speed movement,
+ *  jumping/landing snaps, and the last tiny steps of the exponential transition at full sprint.
+ *  Once the animation has practically completed (t within ~3%), we switch to direct exact placement
+ *  for responsive feel in steady FP or full look-back. */
+export const LOOK_BEHIND_POSITION_TAU = 0.05;

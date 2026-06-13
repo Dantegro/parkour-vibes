@@ -86,22 +86,21 @@ function headY(eyeY: number): number {
 
 /** XZ circle overlaps the box footprint (player radius). */
 function overlapsXZ(px: number, pz: number, box: THREE.Box3): boolean {
-  const nearestX = THREE.MathUtils.clamp(px, box.min.x, box.max.x);
-  const nearestZ = THREE.MathUtils.clamp(pz, box.min.z, box.max.z);
+  return overlapsXZExpanded(px, pz, box, 0);
+}
+
+/** XZ circle overlaps the box footprint expanded by `expand` (lip / corner landings). */
+function overlapsXZExpanded(
+  px: number,
+  pz: number,
+  box: THREE.Box3,
+  expand: number,
+): boolean {
+  const nearestX = THREE.MathUtils.clamp(px, box.min.x - expand, box.max.x + expand);
+  const nearestZ = THREE.MathUtils.clamp(pz, box.min.z - expand, box.max.z + expand);
   const dx = px - nearestX;
   const dz = pz - nearestZ;
   return dx * dx + dz * dz <= PLAYER_RADIUS * PLAYER_RADIUS;
-}
-
-/** Eye XZ over the box top face, with a small edge grace for lip landings. */
-function isNearBoxTop(px: number, pz: number, box: THREE.Box3): boolean {
-  const g = BOX_TOP_EDGE_GRACE;
-  return (
-    px >= box.min.x - g &&
-    px <= box.max.x + g &&
-    pz >= box.min.z - g &&
-    pz <= box.max.z + g
-  );
 }
 
 /**
@@ -199,7 +198,11 @@ function evaluateBoxLanding(
   ctx: FloorContext,
   groundHeight: number,
 ): BoxLandingCandidate | null {
-  if (!overlapsXZ(px, pz, box)) return null;
+  const falling = ctx.velocityY < 0;
+  const xzOverlap = falling
+    ? overlapsXZExpanded(px, pz, box, BOX_TOP_EDGE_GRACE)
+    : overlapsXZ(px, pz, box);
+  if (!xzOverlap) return null;
 
   const pFeet = feetY(eyeY);
   const stepDown = pFeet - box.max.y;
@@ -218,7 +221,6 @@ function evaluateBoxLanding(
   if (stepDown > LAND_SNAP_TOLERANCE) return null;
 
   const onTerrain = pFeet <= groundHeight + 0.2;
-  const falling = ctx.velocityY < 0;
   const crossedTopPlane =
     falling &&
     ctx.prevFeetY >= box.max.y - BOX_TOP_LAND_MARGIN &&
@@ -226,7 +228,7 @@ function evaluateBoxLanding(
 
   // Mid-air only — collidable tops never auto-step from grounded walk (prevents
   // slope exploits where feet are already near box.max.y on elevated terrain).
-  if (!onTerrain && falling && isNearBoxTop(px, pz, box)) {
+  if (!onTerrain && falling) {
     if (
       crossedTopPlane ||
       (stepDown > -BOX_TOP_LAND_MARGIN && stepDown <= LAND_SNAP_TOLERANCE)

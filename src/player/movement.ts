@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import type { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import {
   GRAVITY,
   JUMP_VELOCITY,
@@ -48,17 +47,22 @@ export function createMovementState(): MovementState {
   };
 }
 
+// Reusable temps for movement direction derivation (no per-frame allocations).
+const _moveForward = new THREE.Vector3();
+const _moveRight = new THREE.Vector3();
+
 export function updatePlayerMovement(
   delta: number,
-  camera: THREE.PerspectiveCamera,
-  controls: PointerLockControls,
+  playerEye: THREE.Vector3,
+  viewQuat: THREE.Quaternion,
   input: MovementInput,
   state: MovementState,
   world: CollisionWorld,
   raycaster: THREE.Raycaster,
   rayOrigin: THREE.Vector3,
+  isLocked: boolean = true,
 ): void {
-  if (!controls.isLocked) return;
+  if (!isLocked) return;
 
   const horizontalMove = { x: 0, z: 0 };
   const moveLen = Math.hypot(input.strafe, input.forward);
@@ -74,14 +78,20 @@ export function updatePlayerMovement(
     const inv = 1 / moveLen;
     horizontalMove.x = input.strafe * inv * state.currentSpeed * delta;
     horizontalMove.z = input.forward * inv * state.currentSpeed * delta;
-    controls.moveRight(horizontalMove.x);
-    controls.moveForward(horizontalMove.z);
+
+    // Derive world-space horizontal directions from the current view quaternion (yaw primarily).
+    // Matches the previous PointerLockControls.moveRight/moveForward behavior for FP.
+    _moveForward.set(0, 0, -1).applyQuaternion(viewQuat).setY(0).normalize();
+    _moveRight.set(1, 0, 0).applyQuaternion(viewQuat).setY(0).normalize();
+
+    playerEye.x += _moveRight.x * horizontalMove.x + _moveForward.x * horizontalMove.z;
+    playerEye.z += _moveRight.z * horizontalMove.x + _moveForward.z * horizontalMove.z;
   }
 
-  resolveWalls(camera.position, world.collidables, horizontalMove);
+  resolveWalls(playerEye, world.collidables, horizontalMove);
 
   state.velocityY -= GRAVITY * delta;
-  camera.position.y += state.velocityY * delta;
+  playerEye.y += state.velocityY * delta;
 
   const floorCtx: FloorContext = {
     velocityY: state.velocityY,
@@ -90,7 +100,7 @@ export function updatePlayerMovement(
   };
 
   const floor = resolveFloors(
-    camera.position,
+    playerEye,
     floorCtx,
     world,
     raycaster,
@@ -99,7 +109,7 @@ export function updatePlayerMovement(
   state.velocityY = floor.velocityY;
   state.canJump = floor.canJump;
 
-  resolveWalls(camera.position, world.collidables);
+  resolveWalls(playerEye, world.collidables);
 
   if (input.jump && state.canJump) {
     state.velocityY = JUMP_VELOCITY;
@@ -122,5 +132,5 @@ export function updatePlayerMovement(
     // Already ramping toward WALK_SPEED above; just make sure we don't allow re-entry until regen.
   }
 
-  state.prevFeetY = camera.position.y - PLAYER_FEET_OFFSET;
+  state.prevFeetY = playerEye.y - PLAYER_FEET_OFFSET;
 }

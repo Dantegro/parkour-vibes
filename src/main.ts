@@ -64,6 +64,10 @@ let getStamina: (() => number) | undefined = undefined;
 
 let gameClouds: CloudGroup[] = [];
 
+// The player avatar model returned by initPlayerControls. It is added to the scene while playing
+// and becomes visible when the player holds the look-behind key (C) so you can see your character from behind.
+let playerMesh: THREE.Object3D | undefined;
+
 const menuStyles = injectMainMenuStyles();
 const menuStyle = menuStyles.element;
 const mainMenu = buildMainMenu();
@@ -115,6 +119,11 @@ function startGame() {
   disposeControls = playerAPI.dispose;
   getStamina = playerAPI.getStamina || undefined;
 
+  playerMesh = playerAPI.playerMesh;
+  if (playerMesh && scene) {
+    scene.add(playerMesh);
+  }
+
   // Reveal the 3D canvas and kick off the game loop
   c.style.display = "block";
   c.removeAttribute("aria-hidden");
@@ -153,6 +162,7 @@ function exitToMenu() {
   }
 
   // Clean up game state so animate early-returns
+  const currentScene = scene;
   scene = undefined;
   cube = undefined;
   camera = undefined;
@@ -183,6 +193,23 @@ function exitToMenu() {
     staminaBar = undefined;
   }
   getStamina = undefined;
+
+  if (playerMesh) {
+    if (currentScene) currentScene.remove(playerMesh);
+    playerMesh.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.geometry.dispose();
+        const mat = child.material;
+        if (Array.isArray(mat)) {
+          for (const m of mat) m.dispose();
+        } else {
+          mat.dispose();
+        }
+      }
+    });
+    playerMesh = undefined;
+  }
+
   gameClouds = [];
 }
 
@@ -363,6 +390,23 @@ if (import.meta.hot) {
       staminaBar = undefined;
     }
     getStamina = undefined;
+
+    if (playerMesh) {
+      // Best-effort dispose of resources (scene may already be nulled on HMR path).
+      playerMesh.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          const mat = child.material;
+          if (Array.isArray(mat)) {
+            for (const m of mat) m.dispose();
+          } else {
+            mat.dispose();
+          }
+        }
+      });
+      playerMesh = undefined;
+    }
+
     gameClouds = [];
     if (mainMenu.root.parentNode) mainMenu.root.remove();
     if (menuStyle.parentNode) menuStyle.remove();

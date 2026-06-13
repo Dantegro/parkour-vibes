@@ -78,4 +78,28 @@ describe("resolveFloors", () => {
     expect(result.velocityY).toBe(0);
     expect(eyePos.y).toBeCloseTo(2 + 2.85, 2);
   });
+
+  it("snaps onto a box top when falling slightly past the lip", async () => {
+    const { resolveFloors } = await import("./collision.js");
+    const crate = makeBoxCollidable(0, 0, 0, 2, 2, 2);
+    const world: CollisionWorld = { collidables: [crate] };
+    const raycaster = new THREE.Raycaster();
+    const rayOrigin = new THREE.Vector3();
+    const eyePos = new THREE.Vector3(1.42, 5.0, 0);
+
+    const result = resolveFloors(
+      eyePos,
+      {
+        velocityY: -8,
+        canJump: false,
+        prevFeetY: 2.55,
+      },
+      world,
+      raycaster,
+      rayOrigin,
+    );
+
+    expect(result.onSurface).toBe(true);
+    expect(eyePos.y).toBeCloseTo(2 + 2.85, 2);
+  });
 });
