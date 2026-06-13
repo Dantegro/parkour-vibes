@@ -10,6 +10,7 @@ export const PLAYER_FEET_OFFSET = 2.85;
 export const PLAYER_EYE_HEIGHT = 3.0;
 
 export const WALL_FRICTION = 0.82;
+/** Max height for auto-step onto terrain; collidable tops always require a jump. */
 export const MAX_STEP_HEIGHT = 1.8;
 export const LAND_SNAP_TOLERANCE = 0.4;
 /** Extra XZ leeway when snapping onto a box top (lip / corner landings). */

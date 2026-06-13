@@ -6,7 +6,6 @@ import {
   type FloorContext,
   resolveFloors,
   resolveWalls,
-  sampleGroundHeight,
 } from "./collision.js";
 
 export interface MovementState {
@@ -37,11 +36,6 @@ export function updatePlayerMovement(
 ): void {
   if (!controls.isLocked) return;
 
-  const wallCtx = { canJump: state.canJump, velocityY: state.velocityY };
-  const groundH = world.groundMesh
-    ? sampleGroundHeight(world.groundMesh, camera.position.x, camera.position.z, raycaster, rayOrigin)
-    : 0;
-
   const horizontalMove = { x: 0, z: 0 };
   const moveLen = Math.hypot(input.strafe, input.forward);
 
@@ -53,7 +47,7 @@ export function updatePlayerMovement(
     controls.moveForward(horizontalMove.z);
   }
 
-  resolveWalls(camera.position, world.collidables, horizontalMove, wallCtx, groundH);
+  resolveWalls(camera.position, world.collidables, horizontalMove);
 
   state.velocityY -= GRAVITY * delta;
   camera.position.y += state.velocityY * delta;
@@ -74,7 +68,7 @@ export function updatePlayerMovement(
   state.velocityY = floor.velocityY;
   state.canJump = floor.canJump;
 
-  resolveWalls(camera.position, world.collidables, undefined, wallCtx, groundH);
+  resolveWalls(camera.position, world.collidables);
 
   if (input.jump && state.canJump) {
     state.velocityY = JUMP_VELOCITY;

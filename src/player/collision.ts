@@ -3,7 +3,6 @@ import {
   BOX_TOP_EDGE_GRACE,
   BOX_TOP_LAND_MARGIN,
   LAND_SNAP_TOLERANCE,
-  MAX_STEP_HEIGHT,
   PLAYER_EYE_HEIGHT,
   PLAYER_FEET_OFFSET,
   PLAYER_HEAD_OFFSET,
@@ -124,30 +123,16 @@ export function resolveWalls(
   eyePos: THREE.Vector3,
   collidables: THREE.Mesh[],
   horizontalMove?: { x: number; z: number },
-  floorCtx?: Pick<FloorContext, "canJump" | "velocityY">,
-  groundHeight = 0,
 ): boolean {
   if (collidables.length === 0) return false;
 
   let hitWall = false;
-  const pFeet = feetY(eyePos.y);
-  const onTerrain = pFeet <= groundHeight + 0.2;
-  const groundedWalk =
-    floorCtx !== undefined &&
-    onTerrain &&
-    floorCtx.canJump &&
-    floorCtx.velocityY <= 0;
 
   for (let iter = 0; iter < 3; iter++) {
     let anyHit = false;
 
     for (const mesh of collidables) {
       const box = _box.setFromObject(mesh);
-      const stepToTop = box.max.y - pFeet;
-
-      if (groundedWalk && stepToTop > 0 && stepToTop <= MAX_STEP_HEIGHT) {
-        continue;
-      }
 
       if (!blocksHorizontal(eyePos.y, box)) continue;
 
@@ -234,15 +219,8 @@ function evaluateBoxLanding(
     ctx.prevFeetY >= box.max.y - BOX_TOP_LAND_MARGIN &&
     pFeet <= box.max.y + BOX_TOP_LAND_MARGIN;
 
-  // Walk/step onto a low platform from the ground.
-  if (onTerrain && ctx.velocityY <= 0 && box.max.y - groundHeight <= MAX_STEP_HEIGHT) {
-    const stepToTop = box.max.y - pFeet;
-    if (stepToTop > 0 && stepToTop <= MAX_STEP_HEIGHT) {
-      return { topY: box.max.y, priority: box.max.y };
-    }
-  }
-
-  // Mid-air: land when falling through the top plane or grazing the lip (edge grace).
+  // Mid-air only — collidable tops never auto-step from grounded walk (prevents
+  // slope exploits where feet are already near box.max.y on elevated terrain).
   if (!onTerrain && falling && isNearBoxTop(px, pz, box)) {
     if (
       crossedTopPlane ||
