@@ -20,6 +20,7 @@ export function initPlayerControls(
   domElement: HTMLElement,
   collidables: THREE.Mesh[] = [],
   groundMesh?: THREE.Mesh,
+  onExitToMenu?: () => void,
 ): PlayerAPI {
   const camera = new THREE.PerspectiveCamera(
     75,
@@ -33,7 +34,7 @@ export function initPlayerControls(
 
   const controls = new PointerLockControls(camera, domElement);
 
-  const startOverlay = buildGameStartOverlay();
+  const startOverlay = buildGameStartOverlay(onExitToMenu);
   document.body.appendChild(startOverlay.element);
 
   startOverlay.element.addEventListener("click", async (event) => {

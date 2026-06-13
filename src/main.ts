@@ -101,7 +101,8 @@ function startGame() {
   const playerAPI = initPlayerControls(
     renderer.domElement,
     worldToUse.collidables,
-    worldToUse.ground
+    worldToUse.ground,
+    exitToMenu
   );
   camera = playerAPI.camera;
   updateMovement = playerAPI.updateMovement;
@@ -291,14 +292,6 @@ window.addEventListener("keydown", (e) => {
     setMusicVolume(newVol);
   }
 });
-
-// ESC during gameplay returns to the main menu (home screen)
-window.addEventListener("keydown", (e) => {
-  if (e.code === "Escape" && gameStarted) {
-    e.preventDefault();
-    exitToMenu();
-  }
-}, true); // capture to intercept before pointer-lock handlers if possible
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
