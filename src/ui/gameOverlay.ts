@@ -6,11 +6,18 @@ export interface GameStartOverlay {
   hide: () => void;
 }
 
+export interface GameStartOverlayOptions {
+  extraHint?: string;
+}
+
 /**
  * Full-screen overlay used for initial entry and in-game pause/resume.
  * When onExitToMenu is provided, shows a pause menu with explicit "Back to Menu" option.
  */
-export function buildGameStartOverlay(onExitToMenu?: () => void): GameStartOverlay {
+export function buildGameStartOverlay(
+  onExitToMenu?: () => void,
+  options?: GameStartOverlayOptions,
+): GameStartOverlay {
   const overlay = document.createElement("div");
   overlay.className = "game-start-overlay";
   overlay.style.cssText =
@@ -25,7 +32,8 @@ export function buildGameStartOverlay(onExitToMenu?: () => void): GameStartOverl
     title.textContent = "Paused";
 
     const info = document.createElement("div");
-    info.innerHTML = "Click anywhere to resume<br><small>ESC also resumes • Shift to sprint (stamina) • Hold C for third person</small>";
+    const hintExtra = options?.extraHint ? ` • ${options.extraHint}` : "";
+    info.innerHTML = `Click anywhere to resume<br><small>ESC also resumes • Shift to sprint (stamina) • Hold C for third person${hintExtra}</small>`;
 
     const backBtn = document.createElement("button");
     backBtn.textContent = "Back to Menu";

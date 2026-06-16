@@ -29,3 +29,8 @@ components:
       attributes:
         label: "<text>"
         aria-: "aria-"
+    createBoxInventoryHud:
+      element: status
+      attributes:
+        ariaLive: aria-live
+        ariaLabel: aria-label

@@ -9,6 +9,7 @@ import type { CollisionWorld } from "./player/collision.js";
 import { placePlayerOnGround } from "./player/collision.js";
 import { buildGameStartOverlay } from "./ui/gameOverlay.js";
 import { disposeMeshes } from "./disposeMeshes.js";
+import type { BoxPlacementSystem } from "./systems/boxPlacement.js";
 import {
   createPlayerModel,
   stepThirdPersonTransition,
@@ -24,13 +25,20 @@ export interface PlayerAPI {
   onResize: (width: number, height: number) => void;
 }
 
+export interface PlayerControlsOptions {
+  boxPlacement?: BoxPlacementSystem;
+  overlayExtraHint?: string;
+}
+
 export function initPlayerControls(
   domElement: HTMLElement,
   scene: THREE.Scene,
   collidables: THREE.Mesh[] = [],
   groundMesh?: THREE.Mesh,
   onExitToMenu?: () => void,
+  options?: PlayerControlsOptions,
 ): PlayerAPI {
+  const boxPlacement = options?.boxPlacement;
   const lookCamera = new THREE.PerspectiveCamera(
     75,
     window.innerWidth / window.innerHeight,
@@ -49,7 +57,9 @@ export function initPlayerControls(
 
   const controls = new PointerLockControls(lookCamera, domElement);
 
-  const startOverlay = buildGameStartOverlay(onExitToMenu);
+  const startOverlay = buildGameStartOverlay(onExitToMenu, {
+    extraHint: options?.overlayExtraHint,
+  });
   document.body.appendChild(startOverlay.element);
 
   startOverlay.element.addEventListener("click", async (event) => {
@@ -114,6 +124,19 @@ export function initPlayerControls(
 
   const playerEyePos = new THREE.Vector3().copy(lookCamera.position);
 
+  const placementCtx = {
+    lookCamera,
+    playerEyePos,
+    raycaster,
+    rayOrigin,
+  };
+
+  const handleMouseDown = (e: MouseEvent) => {
+    if (!controls.isLocked || e.button !== 0 || !boxPlacement) return;
+    boxPlacement.tryPlace(placementCtx);
+  };
+  domElement.addEventListener("mousedown", handleMouseDown);
+
   const spawnGroundY = placePlayerOnGround(
     playerEyePos,
     world,
@@ -166,6 +189,10 @@ export function initPlayerControls(
       playerModel,
       delta,
     );
+
+    if (boxPlacement && controls.isLocked) {
+      boxPlacement.updatePreview(placementCtx);
+    }
   }
 
   function onResize(width: number, height: number) {
@@ -182,6 +209,7 @@ export function initPlayerControls(
     window.removeEventListener("keydown", handleKeyDown);
     window.removeEventListener("keyup", handleKeyUp);
     domElement.removeEventListener("contextmenu", handleContextMenu);
+    domElement.removeEventListener("mousedown", handleMouseDown);
 
     scene.remove(playerModel);
     disposeMeshes(playerModel);
