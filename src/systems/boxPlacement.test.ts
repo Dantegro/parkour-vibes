@@ -8,6 +8,7 @@ import {
   PLACE_GROUND_OFFSET,
   computePlacementBaseY,
   evaluatePlacement,
+  findPlacementSupport,
   isPlacementValid,
   positionBoxAtBase,
 } from "./boxPlacement.js";
@@ -90,6 +91,18 @@ describe("computePlacementBaseY", () => {
     const baseY = computePlacementBaseY(hit, ground, collidables, 0, 0, raycaster, rayOrigin);
     expect(baseY).toBeCloseTo(2, 2);
   });
+
+  it("finds support collidables under the candidate footprint", () => {
+    const ground = makeGround();
+    const crate = makeBoxCollidable(4, 0, 4, 3, 2.5, 3);
+    const collidables = [crate];
+    const raycaster = new THREE.Raycaster();
+    const rayOrigin = new THREE.Vector3();
+
+    const support = findPlacementSupport(4, 4, ground, collidables, raycaster, rayOrigin);
+    expect(support.baseY).toBeCloseTo(2.5, 2);
+    expect(support.supportMeshes).toContain(crate);
+  });
 });
 
 describe("isPlacementValid", () => {
@@ -117,6 +130,25 @@ describe("isPlacementValid", () => {
     const playerFeet = new THREE.Vector3(0, PLAYER_FEET_OFFSET, 0);
 
     expect(isPlacementValid(candidate, [], playerFeet)).toBe(true);
+  });
+
+  it("rejects stacking without excluding the support collidable", () => {
+    const existing = makeBoxCollidable(5, 0, 5, 3, PLACEABLE_BOX_HEIGHT, 3);
+    const candidate = makeCandidate();
+    positionBoxAtBase(candidate, 5, PLACEABLE_BOX_HEIGHT, 5);
+    const playerFeet = new THREE.Vector3(0, PLAYER_FEET_OFFSET, 0);
+
+    expect(collidableWouldOverlap(candidate, [existing])).toBe(true);
+    expect(isPlacementValid(candidate, [existing], playerFeet)).toBe(false);
+  });
+
+  it("accepts stacking on top of an existing collidable", () => {
+    const existing = makeBoxCollidable(5, 0, 5, 3, PLACEABLE_BOX_HEIGHT, 3);
+    const candidate = makeCandidate();
+    positionBoxAtBase(candidate, 5, PLACEABLE_BOX_HEIGHT, 5);
+    const playerFeet = new THREE.Vector3(0, PLAYER_FEET_OFFSET, 0);
+
+    expect(isPlacementValid(candidate, [existing], playerFeet, [existing])).toBe(true);
   });
 });
 
@@ -214,6 +246,31 @@ describe("evaluatePlacement", () => {
     expect(result).not.toBeNull();
     expect(result!.distance).toBeLessThanOrEqual(MAX_PLACE_DISTANCE);
     expect(result!.distance).toBeGreaterThanOrEqual(MIN_PLACE_DISTANCE);
+    expect(result!.valid).toBe(true);
+  });
+
+  it("returns valid placement when stacking on an existing box top", () => {
+    const ground = makeGround();
+    const crate = makeBoxCollidable(0, 0, -5, 3, PLACEABLE_BOX_HEIGHT, 3);
+    const collidables = [crate];
+    const lookCamera = new THREE.PerspectiveCamera();
+    lookCamera.position.set(0, 5, 0);
+    lookCamera.lookAt(0, PLACEABLE_BOX_HEIGHT, -5);
+
+    const raycaster = new THREE.Raycaster();
+    const rayOrigin = new THREE.Vector3();
+    const playerEyePos = new THREE.Vector3(0, 5, 0);
+    const candidate = makeCandidate();
+
+    const result = evaluatePlacement(
+      { lookCamera, playerEyePos, raycaster, rayOrigin },
+      ground,
+      collidables,
+      candidate,
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.baseY).toBeCloseTo(PLACEABLE_BOX_HEIGHT, 2);
     expect(result!.valid).toBe(true);
   });
 });

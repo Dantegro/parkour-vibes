@@ -36,10 +36,61 @@ export interface BoxPlacementOptions {
 const _forward = new THREE.Vector3();
 const _box = new THREE.Box3();
 const _playerFeet = new THREE.Vector3();
+const _worldNormal = new THREE.Vector3();
 
 const PREVIEW_VALID_COLOR = 0x6a9a6a;
 const PREVIEW_INVALID_COLOR = 0xaa5555;
 const PLACED_BOX_COLOR = 0x6b8e6b;
+
+export interface PlacementSupport {
+  baseY: number;
+  /** Collidables the candidate rests on; excluded from overlap checks. */
+  supportMeshes: THREE.Mesh[];
+}
+
+function isUpwardCollidableTopHit(hit: THREE.Intersection, collidables: THREE.Mesh[]): boolean {
+  const hitMesh = hit.object;
+  if (!(hitMesh instanceof THREE.Mesh) || !collidables.includes(hitMesh) || !hit.face) {
+    return false;
+  }
+
+  _worldNormal.copy(hit.face.normal).transformDirection(hitMesh.matrixWorld);
+  return _worldNormal.y > 0.7;
+}
+
+/** Highest top surface under the candidate footprint at (x, z). */
+export function findPlacementSupport(
+  x: number,
+  z: number,
+  ground: THREE.Mesh,
+  collidables: THREE.Mesh[],
+  raycaster: THREE.Raycaster,
+  rayOrigin: THREE.Vector3,
+  halfWidth = PLACEABLE_BOX_WIDTH / 2,
+  halfDepth = PLACEABLE_BOX_DEPTH / 2,
+): PlacementSupport {
+  let baseY = sampleGroundHeight(ground, x, z, raycaster, rayOrigin);
+  const supportMeshes: THREE.Mesh[] = [];
+
+  const candMinX = x - halfWidth;
+  const candMaxX = x + halfWidth;
+  const candMinZ = z - halfDepth;
+  const candMaxZ = z + halfDepth;
+
+  for (const col of collidables) {
+    _box.setFromObject(col);
+    const overlapsX = candMaxX > _box.min.x && candMinX < _box.max.x;
+    const overlapsZ = candMaxZ > _box.min.z && candMinZ < _box.max.z;
+    if (!overlapsX || !overlapsZ) continue;
+
+    if (_box.max.y > baseY - 0.01) {
+      baseY = Math.max(baseY, _box.max.y);
+      supportMeshes.push(col);
+    }
+  }
+
+  return { baseY, supportMeshes };
+}
 
 export function computePlacementBaseY(
   hit: THREE.Intersection,
@@ -50,20 +101,31 @@ export function computePlacementBaseY(
   raycaster: THREE.Raycaster,
   rayOrigin: THREE.Vector3,
 ): number {
-  let baseY = sampleGroundHeight(ground, x, z, raycaster, rayOrigin);
+  return computePlacementSupport(hit, ground, collidables, x, z, raycaster, rayOrigin).baseY;
+}
 
-  const hitMesh = hit.object;
-  if (
-    hitMesh instanceof THREE.Mesh &&
-    collidables.includes(hitMesh) &&
-    hit.face &&
-    hit.face.normal.y > 0.7
-  ) {
+export function computePlacementSupport(
+  hit: THREE.Intersection,
+  ground: THREE.Mesh,
+  collidables: THREE.Mesh[],
+  x: number,
+  z: number,
+  raycaster: THREE.Raycaster,
+  rayOrigin: THREE.Vector3,
+): PlacementSupport {
+  const support = findPlacementSupport(x, z, ground, collidables, raycaster, rayOrigin);
+
+  if (isUpwardCollidableTopHit(hit, collidables)) {
+    const hitMesh = hit.object as THREE.Mesh;
     _box.setFromObject(hitMesh);
-    baseY = Math.max(baseY, _box.max.y);
+    const baseY = Math.max(support.baseY, _box.max.y);
+    const supportMeshes = support.supportMeshes.includes(hitMesh)
+      ? support.supportMeshes
+      : [...support.supportMeshes, hitMesh];
+    return { baseY, supportMeshes };
   }
 
-  return baseY;
+  return support;
 }
 
 export function positionBoxAtBase(
@@ -115,7 +177,7 @@ export function evaluatePlacement(
   const horizontalDist = Math.hypot(x - _playerFeet.x, z - _playerFeet.z);
   if (horizontalDist < MIN_PLACE_DISTANCE) return null;
 
-  const baseY = computePlacementBaseY(
+  const { baseY, supportMeshes } = computePlacementSupport(
     hit,
     ground,
     collidables,
@@ -126,7 +188,7 @@ export function evaluatePlacement(
   );
 
   positionBoxAtBase(candidateMesh, x, baseY, z);
-  const valid = isPlacementValid(candidateMesh, collidables, _playerFeet);
+  const valid = isPlacementValid(candidateMesh, collidables, _playerFeet, supportMeshes);
 
   return { valid, x, z, baseY, distance };
 }
@@ -135,8 +197,14 @@ export function isPlacementValid(
   candidate: THREE.Mesh,
   collidables: THREE.Mesh[],
   playerFeet: THREE.Vector3,
+  excludeFromOverlap: THREE.Mesh[] = [],
 ): boolean {
-  if (collidableWouldOverlap(candidate, collidables)) {
+  const overlapTargets =
+    excludeFromOverlap.length > 0
+      ? collidables.filter((mesh) => !excludeFromOverlap.includes(mesh))
+      : collidables;
+
+  if (collidableWouldOverlap(candidate, overlapTargets)) {
     return false;
   }
 
