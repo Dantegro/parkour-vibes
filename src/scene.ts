@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { GameModeId } from "./gameModes.js";
 import { sampleGroundHeight } from "./player/collision.js";
+import { collidableWouldOverlap } from "./world/collidableOverlap.js";
 import { createClouds } from "./world/clouds.js";
 
 export function createWorld(mode: GameModeId = "open-world") {
@@ -54,9 +55,6 @@ export function createWorld(mode: GameModeId = "open-world") {
 
   const raycaster = new THREE.Raycaster();
   const rayOrigin = new THREE.Vector3();
-  const candidateBox = new THREE.Box3();
-  const existingBox = new THREE.Box3();
-
   function getGroundHeightAt(wx: number, wz: number) {
     return sampleGroundHeight(ground, wx, wz, raycaster, rayOrigin);
   }
@@ -66,17 +64,7 @@ export function createWorld(mode: GameModeId = "open-world") {
   }
 
   function wouldOverlap(candidate: THREE.Mesh): boolean {
-    candidateBox.setFromObject(candidate);
-    const margin = 0.25;
-    for (const ex of collidables) {
-      existingBox.setFromObject(ex);
-      existingBox.min.addScalar(-margin);
-      existingBox.max.addScalar(margin);
-      if (existingBox.intersectsBox(candidateBox)) {
-        return true;
-      }
-    }
-    return false;
+    return collidableWouldOverlap(candidate, collidables);
   }
 
   const cube = new THREE.Mesh(
