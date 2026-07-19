@@ -52,23 +52,45 @@ export function createBoxInventoryHud(): BoxInventoryHud {
     "aria-label": "Box ready. Click to place.",
   });
 
+  const PLACED_LABEL_TIMEOUT_MS = 5000;
+  let lastState: BoxInventoryState | undefined;
+  let placedLabelTimer: ReturnType<typeof setTimeout> | undefined;
+
   function setState(state: BoxInventoryState) {
     if (state === "available") {
+      if (placedLabelTimer !== undefined) {
+        clearTimeout(placedLabelTimer);
+        placedLabelTimer = undefined;
+      }
       icon.style.opacity = "1";
       icon.style.borderColor = "#8a9a7a";
       icon.style.background = "linear-gradient(135deg,#5a7a5a 0%,#4a6a4a 100%)";
       label.textContent = "Box ready — click to place";
+      label.style.display = "";
       container.setAttribute("aria-label", "Box ready. Click to place.");
     } else {
       icon.style.opacity = "0.35";
       icon.style.borderColor = "#555";
       icon.style.background = "transparent";
-      label.textContent = "Placed";
       container.setAttribute("aria-label", "Box placed.");
+
+      if (lastState !== "placed") {
+        label.textContent = "Placed";
+        label.style.display = "";
+        placedLabelTimer = setTimeout(() => {
+          label.style.display = "none";
+          placedLabelTimer = undefined;
+        }, PLACED_LABEL_TIMEOUT_MS);
+      }
     }
+    lastState = state;
   }
 
   function remove() {
+    if (placedLabelTimer !== undefined) {
+      clearTimeout(placedLabelTimer);
+      placedLabelTimer = undefined;
+    }
     container.remove();
   }
 
